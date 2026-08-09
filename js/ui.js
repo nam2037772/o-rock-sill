@@ -24,7 +24,7 @@ export const UI = {
       hud: $('hud'), coins: $('coins'), won: $('won'), sound: $('sound-btn'),
       placard: $('placard'), plTitle: $('pl-title'), plYear: $('pl-year'),
       plGenre: $('pl-genre'), plDesc: $('pl-desc'), plGo: $('pl-go'),
-      say: $('say'), touch: $('touch'), stick: $('stick'), knob: $('knob'), abtn: $('abtn'),
+      say: $('say'), touch: $('touchhint'),
       mom: $('mom'), over: $('over'), overStat: $('over-stat'), again: $('again-btn')
     };
 
@@ -44,8 +44,6 @@ export const UI = {
       this.paintSound();
     });
 
-    if (matchMedia('(pointer: coarse)').matches) this.el.touch.hidden = false;
-    this.bindStick();
     this.paintWallet();
   },
 
@@ -121,20 +119,21 @@ export const UI = {
   get touch() { return matchMedia('(pointer: coarse)').matches; },
 
   /**
-   * The one-off welcome. Says where you are, what moves you, and what the
-   * button does — then gets out of the way after eight seconds.
+   * The one-off welcome. Leads with the thing that actually works everywhere —
+   * pick a machine — rather than with movement controls, which are optional on
+   * desktop and gone entirely on touch.
    */
   arrived() {
     this.paintWallet();
     this.say(
       this.touch
-        ? '조이스틱으로 이동 · 게임기 앞에서 [확인]'
-        : '방향키/WASD로 이동 · 게임기 앞에서 ENTER',
-      8
+        ? '오락기를 누르면 알아서 앉아서 시작합니다'
+        : '오락기를 클릭하면 알아서 앉아서 시작합니다',
+      7
     );
     clearTimeout(this.goalTimer);
     this.goalTimer = setTimeout(() => {
-      if (!Session.played) this.say('₩1,000짜리 한 장. 먼저 동전으로 바꾸자.', 4);
+      if (!Session.played && !Session.exchanged) this.say('₩1,000짜리 한 장. 먼저 동전으로 바꾸자.', 4);
     }, 8200);
   },
 
@@ -148,53 +147,13 @@ export const UI = {
     this.sayTimer = setTimeout(() => { s.hidden = true; }, seconds * 1000);
   },
 
-  /* ----------------------------------------------------------- the stick */
-
-  bindStick() {
-    const stick = this.el.stick, knob = this.el.knob, arcade = this.arcade;
-    let id = null, cx = 0, cy = 0, R = 42;
-
-    const set = (dx, dy) => {
-      const d = Math.hypot(dx, dy);
-      const k = d > R ? R / d : 1;
-      knob.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
-      const n = Math.min(1, d / R);
-      arcade.input.ax = d ? (dx / d) * n : 0;
-      arcade.input.ay = d ? (dy / d) * n : 0;
-      if (d > 6) arcade.cancelAuto();
-    };
-    const release = () => {
-      id = null;
-      knob.style.transform = '';
-      arcade.input.ax = arcade.input.ay = 0;
-    };
-
-    stick.addEventListener('pointerdown', (e) => {
-      const r = stick.getBoundingClientRect();
-      cx = r.left + r.width / 2; cy = r.top + r.height / 2; R = r.width * 0.38;
-      id = e.pointerId;
-      stick.setPointerCapture(id);
-      set(e.clientX - cx, e.clientY - cy);
-      e.preventDefault();
-    });
-    stick.addEventListener('pointermove', (e) => {
-      if (e.pointerId !== id) return;
-      set(e.clientX - cx, e.clientY - cy);
-      e.preventDefault();
-    });
-    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) {
-      stick.addEventListener(ev, (e) => { if (e.pointerId === id) release(); });
-    }
-
-    this.el.abtn.addEventListener('click', (e) => { e.preventDefault(); arcade.interact(); });
-  },
-
   /* ----------------------------------------------------------- story beats */
 
   enteredArcade() {
     this.el.front.classList.add('gone');
     setTimeout(() => { this.el.front.style.display = 'none'; }, 500);
     this.el.hud.hidden = false;
+    if (this.touch) this.el.touch.hidden = false;
   },
 
   momBeat(phase) {
@@ -218,7 +177,7 @@ export const UI = {
     this.el.over.hidden = true;
     this.el.mom.hidden = true;
     this.el.hud.hidden = true;
-    if (matchMedia('(pointer: coarse)').matches) this.el.touch.hidden = false;
+    this.el.touch.hidden = true;
     this.el.front.style.display = '';
     // let the display change land before we fade back in
     requestAnimationFrame(() => this.el.front.classList.remove('gone'));

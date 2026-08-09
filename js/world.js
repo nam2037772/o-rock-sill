@@ -122,8 +122,8 @@ export const WALL_ART = [
   { type: 'poster',     x: 96,  y: 30, w: 40, h: 46, art: 0 },
   { type: 'poster',     x: 154, y: 32, w: 36, h: 42, art: 1 },
   { type: 'poster',     x: 268, y: 30, w: 38, h: 44, art: 2 },
-  { type: 'notice',     x: 212, y: 34 },                       // handwritten high scores
-  { type: 'notice',     x: 660, y: 30 },
+  { type: 'notice',     x: 196, y: 34 },                       // handwritten high scores
+  { type: 'notice',     x: 684, y: 30 },
   { type: 'poster',     x: 606, y: 32, w: 36, h: 42, art: 1 },
   { type: 'poster',     x: 718, y: 30, w: 40, h: 46, art: 0 },
   { type: 'poster',     x: 40,  y: 30, w: 34, h: 40, art: 1 },
@@ -132,9 +132,9 @@ export const WALL_ART = [
   { type: 'poster',     x: 654, y: 34, w: 32, h: 38, art: 2 },
   { type: 'poster',     x: 756, y: 32, w: 34, h: 40, art: 1 },
   { type: 'poster',     x: 848, y: 30, w: 36, h: 42, art: 2 },
-  { type: 'notice',     x: 116, y: 36 },
-  { type: 'notice',     x: 574, y: 34 },
-  { type: 'notice',     x: 890, y: 36 },
+  { type: 'notice',     x: 336, y: 36 },
+  { type: 'notice',     x: 508, y: 34 },
+  { type: 'notice',     x: 906, y: 36 },
   { type: 'clock',      x: 796, y: 28 },
   { type: 'sign-lit',   x: 340, y: 44, text: 'TOKENS', tone: '#ffb347' },
   { type: 'sign-lit',   x: 600, y: 44, text: 'GAMES',  tone: '#ff6b6b' }

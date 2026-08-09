@@ -39,12 +39,19 @@ html, body {
 
 /* ------------------------------------------------------------------ canvas */
 
-#stage { position: absolute; inset: 0; }
+#stage {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  background: #07060b;
+  overflow: hidden;
+  touch-action: none;          /* we handle drag-to-look ourselves */
+}
 
+/* The canvas is given an exact pixel size by the engine, at a whole number of
+   device pixels per world pixel. Do not set width/height here — stretching it
+   with CSS is precisely what made the art look out of focus. */
 #scene {
   display: block;
-  width: 100%;
-  height: 100%;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   background: #07060b;
@@ -55,15 +62,15 @@ html, body {
 
 .fx-scan {
   background: repeating-linear-gradient(
-    to bottom, rgba(0,0,0,.28) 0 1px, rgba(0,0,0,0) 1px 3px);
+    to bottom, rgba(0,0,0,.16) 0 1px, rgba(0,0,0,0) 1px 3px);
   mix-blend-mode: multiply;
-  opacity: .55;
+  opacity: .3;
 }
 
 .fx-haze {
   background:
-    radial-gradient(60% 50% at 30% 30%, rgba(150,130,110,.07), transparent 70%),
-    radial-gradient(50% 45% at 75% 60%, rgba(120,140,160,.06), transparent 70%);
+    radial-gradient(60% 50% at 30% 30%, rgba(150,130,110,.035), transparent 70%),
+    radial-gradient(50% 45% at 75% 60%, rgba(120,140,160,.03), transparent 70%);
   animation: drift 34s ease-in-out infinite alternate;
 }
 @keyframes drift {
@@ -72,7 +79,7 @@ html, body {
 }
 
 .fx-vig {
-  background: radial-gradient(120% 100% at 50% 45%, transparent 45%, rgba(0,0,0,.72) 100%);
+  background: radial-gradient(130% 110% at 50% 45%, transparent 58%, rgba(0,0,0,.5) 100%);
 }
 
 /* ------------------------------------------------------------------ plates */
@@ -104,19 +111,30 @@ html, body {
 
 /* --------------------------------------------------------------- the front */
 
+/* The entrance CTA used to sit on the very bottom edge, where phone browser
+   chrome hides it. It now lives in the lower third of the viewport height, so
+   it is unmistakably visible without ever scrolling. */
 #front {
   position: absolute; inset: 0;
-  display: grid; place-items: end center;
-  padding: 0 16px calc(28px + env(safe-area-inset-bottom));
+  height: 100dvh;
+  display: grid; align-content: end; justify-items: center;
+  padding: 0 16px clamp(56px, 18dvh, 160px);
   text-align: center;
   transition: opacity .5s ease;
+  pointer-events: none;
 }
+#front .front-inner { pointer-events: auto; }
 #front.gone { opacity: 0; pointer-events: none; }
 
-.front-line { font-size: 15px; color: var(--ink-dim); margin-bottom: 12px; text-shadow: 0 2px 4px #000; }
+.front-line { font-size: clamp(14px, 3.6vw, 17px); color: var(--ink); margin-bottom: 14px; text-shadow: 0 2px 6px #000, 0 0 14px #000; }
 .front-line b { color: var(--brass); }
 
-#enter-btn { font-size: 16px; padding: 12px 26px; animation: nudge 2.4s ease-in-out infinite; }
+#enter-btn {
+  font-size: clamp(16px, 4.6vw, 20px);
+  padding: 16px 34px;
+  box-shadow: 0 3px 0 #0c0a11, 0 0 0 3px rgba(0,0,0,.55), 0 10px 30px rgba(0,0,0,.6);
+  animation: nudge 2.4s ease-in-out infinite;
+}
 @keyframes nudge { 0%,88%,100% { transform: none; } 92% { transform: translateY(-2px); } }
 
 .front-keys {
@@ -206,41 +224,19 @@ html, body {
 }
 @keyframes pop { from { opacity: 0; transform: translate(-50%, 4px); } }
 
-/* -------------------------------------------------------- touch controls */
+/* ------------------------------------------------------------- touch hint */
 
-#touch { position: absolute; inset: 0; pointer-events: none; }
-#touch > * { pointer-events: auto; }
-
-#stick {
-  position: absolute;
-  left: calc(20px + env(safe-area-inset-left));
-  bottom: calc(22px + env(safe-area-inset-bottom));
-  width: 108px; height: 108px; border-radius: 50%;
-  background: radial-gradient(circle at 50% 45%, #221f28, #0e0c13 70%);
-  border: 2px solid #35303c;
-  box-shadow: inset 0 4px 10px rgba(0,0,0,.7);
-  touch-action: none;
+/* No stick, no d-pad: drag to look, tap a machine to play it. */
+#touchhint {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  padding: 7px 14px;
+  background: rgba(12,10,16,.6);
+  border: 1px solid #241f2a;
+  font-size: 12px; color: #9a9186;
+  pointer-events: none;
+  white-space: nowrap;
 }
-#knob {
-  position: absolute; left: 50%; top: 50%;
-  width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%;
-  background: radial-gradient(circle at 36% 30%, #e05a48, #7d2418 72%);
-  border: 1px solid #40120c;
-  box-shadow: 0 3px 0 #2a0c07;
-}
-
-#abtn {
-  position: absolute;
-  right: calc(24px + env(safe-area-inset-right));
-  bottom: calc(34px + env(safe-area-inset-bottom));
-  width: 84px; height: 84px; border-radius: 50%;
-  border: 2px solid #4a1810;
-  background: radial-gradient(circle at 38% 30%, #d8b24a, #8a6118 72%);
-  box-shadow: 0 5px 0 #3a2a0c;
-  color: #2c1e08; font-family: var(--kr); font-size: 15px; font-weight: 700;
-  cursor: pointer; touch-action: manipulation;
-}
-#abtn:active { transform: translateY(4px); box-shadow: 0 1px 0 #3a2a0c; }
 
 /* -------------------------------------------------------------- mom / over */
 
@@ -303,7 +299,7 @@ html, body {
 
 .cab-screen { position: relative; flex: 1 1 auto; background: #05040a; }
 #game-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
-.cab-fx { opacity: .22; }
+.cab-fx { opacity: .12; }
 
 #cab-over {
   position: absolute; inset: 0;
@@ -314,15 +310,15 @@ html, body {
 
 /* ------------------------------------------------------------------ tweaks */
 
-@media (pointer: fine) {
-  #touch { display: none; }
-}
+@media (pointer: fine)  { .k-touch   { display: none; } }
+@media (pointer: coarse) { .k-desktop { display: none; } }
 @media (max-width: 560px) {
-  #placard { bottom: calc(140px + env(safe-area-inset-bottom)); width: calc(100vw - 24px); }
-  #say { bottom: calc(214px + env(safe-area-inset-bottom)); white-space: normal; max-width: calc(100vw - 32px); text-align: center; }
+  #placard { bottom: calc(52px + env(safe-area-inset-bottom)); width: calc(100vw - 24px); }
+  #say { bottom: calc(150px + env(safe-area-inset-bottom)); white-space: normal; max-width: calc(100vw - 32px); text-align: center; }
   #pl-desc { display: none; }
   .cab-btns .plate { font-size: 11px; padding: 8px 10px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .fx-haze, #enter-btn, .mom-main, .mom-sub, #cabinet.is-open { animation: none; }
+  #front { transition: none; }
 }

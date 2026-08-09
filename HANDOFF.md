@@ -70,14 +70,32 @@ text and loads in one round trip.
 the registry says it is, and launching one is handed to the launcher.
 
 ### Rendering
-A 3/4 top-down room drawn on a canvas at a low virtual resolution and scaled up
-with `image-rendering: pixelated`. The camera sizes itself by *area*
+A 3/4 top-down room drawn on a canvas. The camera sizes itself by *area*
 (`TARGET_PIXELS`) rather than fixed dimensions, so a phone in portrait sees the
 same amount of arcade as a desktop instead of a letterboxed crop. Static floor,
 walls and posters are pre-rendered once into an offscreen canvas; only machines,
 people and lighting are redrawn each frame. Objects are sorted by the front edge
 of their footprint (painter's algorithm) so you walk in front of and behind
 things correctly.
+
+**Sharpness rules — the room looked out of focus until all three held.**
+
+1. The canvas backing store is the **real device resolution**
+   (`clientWidth × devicePixelRatio`), never a small buffer stretched by CSS.
+   `#scene` therefore has no width/height in the stylesheet; the engine sets an
+   exact pixel size. Desktop at dpr 2 renders 2880×1620; a phone at dpr 3
+   renders 975×2109.
+2. There is a **whole number of device pixels per world pixel** (`pxScale`).
+   At a fractional scale some art pixels land on two screen pixels and their
+   neighbours on three, which reads as blur no matter what `image-rendering`
+   says.
+3. The **camera translation is rounded to whole device pixels** every frame. A
+   fractional translate smears every sprite in the room even when the scale is
+   perfect.
+
+Smoothing is off on every context, and the CRT overlays are deliberately faint —
+scanlines at 0.16 alpha / 0.32 opacity and a light vignette. At any real
+strength they halve the contrast of 3-pixel-tall text and read as softness.
 
 ---
 
@@ -91,14 +109,23 @@ steering wedges on another cabinet — there is no path finder — the player is
 snapped onto the stool after about a second rather than left stranded. A cold
 tap on a cabinet with no coins in hand ends in a running game in ~6 seconds.
 
-**Desktop** — `WASD` / arrow keys to walk, `Enter` or `Space` to interact,
-`Esc` to leave a running game. Clicking bare floor walks there.
+One gesture vocabulary everywhere:
 
-**Mobile is a first-class target, not an adaptation.** A virtual joystick sits
-bottom-left and a 확인 button bottom-right, both clear of the safe-area insets.
-Interaction zones are generous — cabinet width + 60 px wide, 88 px deep — so
-pixel-perfect positioning is never required on any platform. Taking the controls
-yourself (key, stick) always cancels an errand in progress.
+| gesture | result |
+|---|---|
+| click / tap a machine | play it — walk, change money, sit, coin, launch |
+| click / tap the floor  | walk there |
+| drag | look around the room without walking |
+
+**Desktop** — `WASD` / arrow keys and `Enter`/`Space` remain as optional
+exploration; `Esc` leaves a running game.
+
+**Mobile has no joystick and no d-pad.** Holding a stick to travel was
+uncomfortable and, since tapping a cabinet does the whole job, unnecessary. You
+drag to browse the room and tap the machine you want. Interaction zones are
+generous — cabinet width + 60 px wide, 88 px deep — so pixel-perfect positioning
+is never required. Taking the controls yourself always cancels an errand and
+hands the camera back to the player.
 
 ### First-visit guidance
 
@@ -162,6 +189,10 @@ Play money for a nostalgia mechanic — no real currency, payments or purchases.
    with the coin-drop sound, then CREDIT 1.
 4. Broken machines cost nothing and launch nothing — they only say
    `고장난 것 같다.`
+5. **Running out never dead-ends.** With no coins and no note left, the day is
+   simply over: the mom event fires and hands you a fresh ₩1,000. Saying
+   "동전이 없다" and doing nothing left the player walking up to machine after
+   machine with no way out — it looked exactly like a broken launch.
 5. Coins and position survive a refresh via `sessionStorage`.
 
 Spend all ten and, once the last game ends, **엄마가 오락실에 찾아오셨습니다.**
@@ -230,6 +261,9 @@ Three suites, all run on desktop (1440×810) and mobile (390×844):
   no prior knowledge, and fails if it cannot get a game running quickly.
 - **Tap-only.** Never touches a movement control; clicks cabinets cold and
   requires every one to end in a running game.
+- **Real-click.** The strictest one: no keyboard, no programmatic calls at all.
+  Floor clicks to travel, then a single click on the cabinet, for all five
+  active machines on desktop and mobile.
 
 - **Production cabinet walk-through.** Runs against the live site and, for each
   of the five active cabinets in turn: clicks the cabinet, confirms the player
@@ -266,6 +300,15 @@ the room feel full.
   destination, so a tap always completes — but across a crowded room you will
   sometimes see them scuff along a row before the snap. Real pathfinding is the
   first thing to add if the floor plan grows.
+- Only the cabinets currently on screen can be tapped, which is the point of
+  drag-to-look. LAST BUS PANIC faces the door so there is always something
+  playable in view the moment you walk in.
+- **Automated tests can produce false positives here.** An earlier suite called
+  `tapTarget()` directly whenever a cabinet was off screen, which quietly
+  skipped the real click path and reported five green cabinets while a real
+  visitor could hit a dead end. Tests that claim to cover input must use
+  `page.mouse.click` / `page.touchscreen.tap` on the canvas, from a fresh
+  session, and never poke engine methods.
 - Full-screen overlays must never intercept taps. The guidance subtitle sits
   over the middle of the room on a phone and silently ate every tap until it was
   given `pointer-events: none`; anything new added to the overlay layer needs the

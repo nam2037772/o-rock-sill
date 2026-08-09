@@ -475,7 +475,7 @@ function uprightCab(ctx, m, t, focus) {
 
   // marquee — lit from behind on a live machine, a dark grey slab on a dead one
   const mq = top + 1;
-  r(ctx, x0 + 1, mq, w - 2, 14, shade(th.trim, -22));
+  r(ctx, x0 + 1, mq, w - 2, 15, shade(th.trim, -22));
   if (dead) {
     // one tube left half-alive, stuttering on a bad ballast
     const gasp = Math.sin(t * 23 + m.phase * 11) > 0.965;
@@ -490,7 +490,7 @@ function uprightCab(ctx, m, t, focus) {
       r(ctx, x0 + 5 + i * ((w - 10) / 6), mq + 12, 2, 1, on ? '#fff2cc' : shade(th.neon, -70));
     }
   }
-  r(ctx, x0 + 2, mq + 12, w - 4, 1, '#00000055');
+  r(ctx, x0 + 2, mq + 13, w - 4, 1, '#00000055');
 
   // bezel + CRT
   const sw = w - 12, sh = 18, sx = x - sw / 2, sy = top + 17;
@@ -737,7 +737,7 @@ const PROP_PAINTERS = {
     r(ctx, x0, top + 3, 3, p.h + p.d - 3, shade(th.body, -18));
     r(ctx, x0 + p.w - 3, top + 3, 3, p.h + p.d - 3, shade(th.body, -18));
 
-    r(ctx, x0 + 1, top + 1, p.w - 2, 14, shade(th.trim, -22));
+    r(ctx, x0 + 1, top + 1, p.w - 2, 15, shade(th.trim, -22));
     r(ctx, x0 + 2, top + 2, p.w - 4, 12, shade(th.neon, p.broken ? -112 : -46));
     pxMarquee(ctx, label, p.x, top + 2, p.w - 8, 12, p.broken ? '#4a4552' : '#ddd6c8');
 
@@ -1098,9 +1098,14 @@ export function drawReflections(ctx, machines) {
  * `open` 0..1 slides the door open when the player goes in.
  */
 export function drawStorefront(ctx, w, h, t, open = 0) {
-  const gy = Math.round(h * 0.80);          // pavement line
-  const bx = Math.round(w * 0.10), bw = Math.round(w * 0.80);
-  const by = Math.round(h * 0.06), bh = gy - by;
+  // The shopfront keeps its own proportions instead of being stretched to the
+  // viewport: on a tall phone that turned the doorway into a vertical sliver.
+  // Anything left over becomes more sky above and more pavement below.
+  const bw = Math.round(Math.min(w * 0.86, h * 0.80));
+  const bh = Math.round(bw * 0.72);
+  const gy = Math.round(Math.min(h * 0.82, h * 0.52 + bh * 0.5));
+  const bx = Math.round(w / 2 - bw / 2);
+  const by = gy - bh;
   const rnd = mulberry(8801);
 
   // --- night sky and the block behind ---------------------------------------
@@ -1116,7 +1121,7 @@ export function drawStorefront(ctx, w, h, t, open = 0) {
   ctx.globalAlpha = 1;
   // neighbouring buildings, mostly dark, a few lit windows
   for (let i = 0; i < 9; i++) {
-    const sx = i * (w / 9) - 6, sw2 = w / 9 + 8, sh2 = h * (0.18 + rnd() * 0.22);
+    const sx = i * (w / 9) - 6, sw2 = w / 9 + 8, sh2 = bh * (0.5 + rnd() * 0.55);
     r(ctx, sx, gy - sh2, sw2, sh2, '#12101c');
     for (let k = 0; k < 5; k++) {
       if (rnd() < 0.35) r(ctx, sx + 4 + (k % 3) * 7, gy - sh2 + 6 + Math.floor(k / 3) * 9, 4, 5, '#3c3a2a');
@@ -1210,22 +1215,23 @@ export function drawStorefront(ctx, w, h, t, open = 0) {
   ctx.restore();
 
   // --- streetlamp, moths, a leaning bike ------------------------------------
-  const lx = Math.round(w * 0.09);
-  r(ctx, lx - 1, h * 0.30, 3, gy - h * 0.30, '#2a2a34');
-  r(ctx, lx - 6, h * 0.28, 13, 4, '#33333f');
-  r(ctx, lx - 4, h * 0.30, 9, 3, '#e8d9a8');
+  const lx = Math.max(10, Math.round(bx * 0.5));
+  const ly = by + bh * 0.30;
+  r(ctx, lx - 1, ly, 3, gy - ly, '#2a2a34');
+  r(ctx, lx - 6, ly - 2, 13, 4, '#33333f');
+  r(ctx, lx - 4, ly, 9, 3, '#e8d9a8');
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   ctx.globalAlpha = 0.16 + Math.sin(t * 30) * 0.02;
-  const lg = ctx.createRadialGradient(lx, h * 0.31, 2, lx, h * 0.31, w * 0.22);
+  const lg = ctx.createRadialGradient(lx, ly + 1, 2, lx, ly + 1, bw * 0.28);
   lg.addColorStop(0, '#ffe0a0'); lg.addColorStop(1, '#00000000');
-  ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(lx, h * 0.31, w * 0.22, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(lx, ly + 1, bw * 0.28, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
   for (let i = 0; i < 4; i++) {
     const a = t * (1.4 + i * 0.4) + i * 2;
-    r(ctx, lx + Math.cos(a) * (7 + i * 2), h * 0.31 + Math.sin(a * 1.3) * (5 + i), 1, 1, '#d8cfa8');
+    r(ctx, lx + Math.cos(a) * (7 + i * 2), ly + 1 + Math.sin(a * 1.3) * (5 + i), 1, 1, '#d8cfa8');
   }
-  const bkx = Math.round(w * 0.86);
+  const bkx = Math.round(Math.min(w - 26, bx + bw + (w - bx - bw) * 0.4));
   ctx.save(); ctx.globalAlpha = 0.85;
   ctx.strokeStyle = '#3a3a46'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.arc(bkx, gy - 5, 5, 0, Math.PI * 2); ctx.stroke();
@@ -1235,7 +1241,7 @@ export function drawStorefront(ctx, w, h, t, open = 0) {
   r(ctx, bkx + 11, gy - 15, 1, 4, '#4a4a58');
 
   // vignette so the eye goes to the door
-  const vg = ctx.createRadialGradient(w / 2, gy - h * 0.1, h * 0.2, w / 2, gy - h * 0.1, h * 0.85);
+  const vg = ctx.createRadialGradient(w / 2, gy - bh * 0.4, bh * 0.4, w / 2, gy - bh * 0.4, Math.max(w, h) * 0.7);
   vg.addColorStop(0, '#00000000');
   vg.addColorStop(1, '#000000cc');
   ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h);

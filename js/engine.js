@@ -40,6 +40,8 @@ export const Arcade = {
   active: null,               // machine currently being used
   autoTarget: null,
   pending: null,              // a tapped cabinet we are on our way to
+  camFree: false,             // true while the player is dragging the view around
+  pxScale: 1,                 // device pixels per world pixel (always an integer)
   timer: 0,
   fade: 0,
   redFlash: 0,
@@ -118,17 +120,27 @@ export const Arcade = {
 
   resize() {
     const host = this.canvas.parentElement;
-    const cw = host.clientWidth, chh = host.clientHeight;
-    const aspect = cw / chh;
-    let vw = Math.round(Math.sqrt(TARGET_PIXELS * aspect));
-    vw = Math.max(300, Math.min(780, vw));
-    let vh = Math.round(vw / aspect);
-    if (vh > 780) { vh = 780; vw = Math.round(vh * aspect); }
-    if (vh < 240) { vh = 240; vw = Math.round(vh * aspect); }
-    this.vw = vw; this.vh = vh;
-    const dpr = 1;                      // we want chunky pixels, not device pixels
-    this.canvas.width = vw * dpr;
-    this.canvas.height = vh * dpr;
+    const cw = Math.max(1, host.clientWidth), ch = Math.max(1, host.clientHeight);
+    const dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    const dw = Math.round(cw * dpr), dh = Math.round(ch * dpr);
+
+    // The logical viewport we would like, from the target area.
+    let want = Math.round(Math.sqrt(TARGET_PIXELS * (cw / ch)));
+    want = Math.max(300, Math.min(780, want));
+
+    // Render at the real device resolution with a whole number of device pixels
+    // per world pixel. A low-res backing store stretched by CSS is what made the
+    // room look out of focus: at a fractional scale some art pixels land on 2
+    // screen pixels and their neighbours on 3, which reads as blur.
+    const S = Math.max(1, Math.round(dw / want));
+    this.pxScale = S;
+    this.vw = Math.max(160, Math.floor(dw / S));
+    this.vh = Math.max(160, Math.floor(dh / S));
+
+    this.canvas.width = this.vw * S;
+    this.canvas.height = this.vh * S;
+    this.canvas.style.width = (this.vw * S / dpr) + 'px';
+    this.canvas.style.height = (this.vh * S / dpr) + 'px';
     this.ctx.imageSmoothingEnabled = false;
   },
 
@@ -427,6 +439,7 @@ export const Arcade = {
 
   updateCamera(dt) {
     if (this.mode === 'zoom' || this.mode === 'unzoom') return;
+    if (this.camFree && this.mode === 'walk') { this.clampCam(); return; }
     const p = this.player;
     const tx = p.x, ty = p.y - 40;
     const k = 1 - Math.pow(0.0025, dt);
@@ -448,13 +461,17 @@ export const Arcade = {
 
   draw() {
     const ctx = this.ctx;
+    const S = this.pxScale || 1;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#07060b';
-    ctx.fillRect(0, 0, this.vw, this.vh);
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     if (this.mode === 'front' || this.mode === 'entering') {
+      ctx.setTransform(S, 0, 0, S, 0, 0);
       const g = drawStorefront(ctx, this.vw, this.vh, this.t, this.doorOpen);
       drawFrontPlayer(ctx, g.doorX + 26, g.groundY + 12, this.t, this.mode === 'entering');
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       this.drawFade();
       return;
     }
@@ -463,10 +480,13 @@ export const Arcade = {
     const ox = sh ? (Math.random() - 0.5) * sh * 2 : 0;
     const oy = sh ? (Math.random() - 0.5) * sh * 2 : 0;
 
+    // Whole device pixels for the camera offset too — a fractional translate
+    // would smear every sprite in the room no matter how crisp the scale is.
+    const k = S * this.cam.scale;
+    const tx = Math.round((this.vw / 2 + ox) * S - this.cam.x * k);
+    const ty = Math.round((this.vh / 2 + oy) * S - this.cam.y * k);
     ctx.save();
-    ctx.translate(this.vw / 2 + ox, this.vh / 2 + oy);
-    ctx.scale(this.cam.scale, this.cam.scale);
-    ctx.translate(-this.cam.x, -this.cam.y);
+    ctx.setTransform(k, 0, 0, k, tx, ty);
 
     ctx.drawImage(this.staticLayer, 0, 0);
     drawReflections(ctx, this.machines);
@@ -499,10 +519,11 @@ export const Arcade = {
     if (this.mode === 'mom' && this.momPhase >= 1) this.drawDoorSpotlight(ctx);
 
     ctx.restore();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
     if (this.redFlash > 0.01) {
       ctx.fillStyle = `rgba(200,30,30,${this.redFlash * 0.5})`;
-      ctx.fillRect(0, 0, this.vw, this.vh);
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
     this.drawFade();
   },
@@ -534,8 +555,9 @@ export const Arcade = {
 
   drawFade() {
     if (this.fade > 0.001) {
+      this.ctx.setTransform(1, 0, 0, 1, 0, 0);
       this.ctx.fillStyle = `rgba(0,0,0,${Math.min(1, this.fade)})`;
-      this.ctx.fillRect(0, 0, this.vw, this.vh);
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
   },
 
@@ -573,8 +595,8 @@ export const Arcade = {
       return;
     }
     if (Session.coins <= 0) {
-      Sound.deny();
-      this.say(Session.exchanged ? '동전이 없다.' : '동전부터 바꿔야 한다.', 2.4);
+      if (!Session.exchanged) { Sound.deny(); this.say('동전부터 바꿔야 한다.', 2.4); return; }
+      this.outOfMoney();
       return;
     }
     this.sitAt(m);
@@ -601,6 +623,7 @@ export const Arcade = {
   walkTo(wx, wy) {
     if (this.mode !== 'walk') return;
     this.pending = null;
+    this.followPlayer();
     this.autoTarget = { x: wx, y: wy, life: 6 };
   },
 
@@ -614,6 +637,24 @@ export const Arcade = {
       y: this.cam.y + (py - this.vh / 2) / this.cam.scale
     };
   },
+
+  /**
+   * Drag anywhere on the floor to look around without walking. Used on touch,
+   * where holding a stick to travel is miserable and unnecessary — you browse
+   * the room with your thumb and tap the machine you want.
+   */
+  panBy(dxCss, dyCss) {
+    if (this.mode !== 'walk') return;
+    const rect = this.canvas.getBoundingClientRect();
+    const perCss = this.vw / rect.width / this.cam.scale;
+    this.camFree = true;
+    this.cam.x -= dxCss * perCss;
+    this.cam.y -= dyCss * perCss;
+    this.clampCam();
+  },
+
+  /** Hand the camera back to the player. */
+  followPlayer() { this.camFree = false; },
 
   /** Whatever interactive thing was tapped on screen — its body or its stool. */
   pick(wx, wy) {
@@ -636,12 +677,17 @@ export const Arcade = {
    */
   tapTarget(hit) {
     if (this.mode !== 'walk' || !hit) return;
+    this.followPlayer();
     if (hit.kind === 'change') {
       this.pending = { stage: 'change', machine: null };
       this.autoTarget = { x: this.changeSpot.x, y: this.changeSpot.y + 26, life: 5 };
       return;
     }
     const m = hit.ref;
+    if (m.game.status === 'playable' && Session.coins <= 0 && Session.exchanged) {
+      this.outOfMoney();
+      return;
+    }
     if (m.game.status === 'playable' && !Session.exchanged) {
       // no coins yet: swing past the changer first, then carry on to the machine
       this.pending = { stage: 'change', machine: m };
@@ -678,12 +724,24 @@ export const Arcade = {
     if (gaveUp) { this.player.x = m.seat.x; this.player.y = m.seat.y; }
     this.updateFocus();
     if (m.game.status !== 'playable') { Sound.deny(); this.say('고장난 것 같다.', 2.0); return; }
-    if (Session.coins <= 0) { Sound.deny(); this.say('동전이 없다.', 2.2); return; }
+    if (Session.coins <= 0) { this.outOfMoney(); return; }
     this.sitAt(m);
   },
 
+  /**
+   * No coins and no note left means the day is simply over — end it, so the
+   * player gets a fresh ₩1,000. Saying "동전이 없다" and doing nothing leaves
+   * them tapping cabinets forever with no way out, which is exactly what it
+   * looked like: walk up to a machine, stop, nothing happens.
+   */
+  outOfMoney() {
+    this.say('동전이 다 떨어졌다.', 2.2);
+    Sound.deny();
+    this.startMomEvent();
+  },
+
   /** Manual input always wins: cancel whatever we were walking toward. */
-  cancelAuto() { this.autoTarget = null; this.pending = null; },
+  cancelAuto() { this.autoTarget = null; this.pending = null; this.followPlayer(); },
 
   /**
    * Where a lost first-time visitor should be heading: the coin changer while
@@ -709,6 +767,7 @@ export const Arcade = {
   restart() {
     Session.reset();
     this.pending = null;
+    this.camFree = false;
     this.mode = 'front';
     this.momPhase = 0;
     this.fade = 0;

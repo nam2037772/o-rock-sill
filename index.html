@@ -28,8 +28,8 @@
       <p class="front-line">주머니엔 <b>₩1,000</b> 한 장.</p>
       <button id="enter-btn" class="plate plate-go">오락실 들어가기</button>
       <p class="front-keys">
-        <span>이동 <b>WASD</b> / <b>방향키</b></span>
-        <span>확인 <b>ENTER</b></span>
+        <span class="k-desktop">오락기를 <b>클릭</b>하면 바로 플레이</span>
+        <span class="k-touch">오락기를 <b>탭</b>하면 바로 플레이</span>
       </p>
     </div>
   </div>
@@ -58,11 +58,9 @@
 
   <div id="say" hidden></div>
 
-  <!-- ------------------------------------------------------ touch controls -->
-  <div id="touch" hidden>
-    <div id="stick" aria-label="이동"><div id="knob"></div></div>
-    <button id="abtn" aria-label="확인">확인</button>
-  </div>
+  <!-- On touch there is no stick: you drag to look around and tap a machine
+       to play it. Movement is storytelling, not a control challenge. -->
+  <div id="touchhint" hidden>끌어서 둘러보고, 오락기를 누르세요</div>
 
   <!-- ---------------------------------------------------- the boss arrives -->
   <div id="mom" hidden>

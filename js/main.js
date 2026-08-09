@@ -77,29 +77,51 @@ addEventListener('keyup', (e) => {
 
 addEventListener('blur', () => { HELD.clear(); applyAxis(); });
 
-/* --------------------------------------------------------------- tap to go */
+/* ------------------------------------------------- tap to play, drag to look */
 
+/*
+ * One gesture vocabulary on every device:
+ *   tap / click a machine  → play it (walk, sit, coin, launch)
+ *   tap / click the floor  → walk there
+ *   drag                   → look around without walking
+ * Keyboard movement stays available on desktop as optional exploration.
+ */
 let down = null;
+const DRAG_SLOP = 10;
+
 canvas.addEventListener('pointerdown', (e) => {
   firstGesture();
-  down = { x: e.clientX, y: e.clientY, t: performance.now() };
+  down = { x: e.clientX, y: e.clientY, lx: e.clientX, ly: e.clientY, t: performance.now(), dragged: false };
+  canvas.setPointerCapture?.(e.pointerId);
 });
-canvas.addEventListener('pointerup', (e) => {
+
+canvas.addEventListener('pointermove', (e) => {
   if (!down) return;
-  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
-  const quick = performance.now() - down.t < 500;
+  const total = Math.hypot(e.clientX - down.x, e.clientY - down.y);
+  if (!down.dragged && total < DRAG_SLOP) return;
+  down.dragged = true;
+  Arcade.panBy(e.clientX - down.lx, e.clientY - down.ly);
+  down.lx = e.clientX; down.ly = e.clientY;
+});
+
+const endDrag = (e) => {
+  if (!down) return;
+  const wasDrag = down.dragged;
+  const quick = performance.now() - down.t < 600;
   down = null;
-  if (!quick || moved > 12) return;
+  if (wasDrag) return;                       // a look-around, not a choice
 
   if (Arcade.mode === 'front') { Arcade.enter(); return; }
-  if (Arcade.mode !== 'walk') return;
+  if (Arcade.mode !== 'walk' || !quick) return;
 
   const w = Arcade.toWorld(e.clientX, e.clientY);
   const hit = Arcade.pick(w.x, w.y);
   // tapping a machine is the whole instruction: walk, change money, sit, play
   if (hit) Arcade.tapTarget(hit);
   else Arcade.walkTo(w.x, w.y);
-});
+};
+canvas.addEventListener('pointerup', endDrag);
+canvas.addEventListener('pointercancel', () => { down = null; });
 
 /* ------------------------------------------------------- audio gate + misc */
 
