@@ -6,10 +6,10 @@
  * adding a machine means adding a row to games.js and nothing else.
  */
 
-import { Arcade } from './engine.js';
-import { UI } from './ui.js';
-import { Sound } from './audio.js';
-import { Session } from './session.js';
+import { Arcade } from './engine.js?v=1.0.2';
+import { UI } from './ui.js?v=1.0.2';
+import { Sound } from './audio.js?v=1.0.2';
+import { Session } from './session.js?v=1.0.2';
 
 const canvas = document.getElementById('scene');
 
