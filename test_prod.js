@@ -5,6 +5,13 @@ const { chromium } = require('playwright');
   const context = await browser.newContext();
   const page = await context.newPage();
   
+  page.on('pageerror', (err) => {
+    console.error('Page Error:', err);
+  });
+  page.on('console', (msg) => {
+    console.log('Page Console:', msg.text());
+  });
+
   // Track new pages
   let newTabPromise = context.waitForEvent('page');
 
