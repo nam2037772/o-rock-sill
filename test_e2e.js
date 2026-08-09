@@ -50,23 +50,10 @@ async function runTest(viewport, name) {
   }
 
   // Take storefront screenshot
-  await page.screenshot({ path: path.join(__dirname, `screenshot_${name}_1_front.png`) });
-  console.log(`Front screenshot saved.`);
-
-  // 2. Click "오락실 들어가기" button
-  console.log('Clicking "오락실 들어가기" button...');
-  const enterBtn = await page.$('#enter-btn');
-  if (!enterBtn) {
-    throw new Error('"Enter arcade" button (#enter-btn) not found!');
-  }
-  await enterBtn.click();
-
-  // 3. Verify arcade interior appears
+  // 2. Verify arcade interior appears immediately
   console.log('Waiting for arcade interior (#hud) to appear...');
   await page.waitForSelector('#hud', { state: 'visible', timeout: 5000 });
-  console.log('Waiting for front screen transition to finish...');
-  await page.waitForSelector('#front', { state: 'hidden', timeout: 5000 });
-  console.log('Arcade interior is fully interactive!');
+  console.log('Arcade interior is immediately visible!');
 
   // Take interior screenshot
   await page.screenshot({ path: path.join(__dirname, `screenshot_${name}_2_interior.png`) });

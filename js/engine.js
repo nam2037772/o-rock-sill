@@ -28,7 +28,7 @@ const TARGET_PIXELS = 205000;
 export const Arcade = {
   canvas: null, ctx: null,
   vw: 380, vh: 216,
-  mode: 'front',              // front | walk | seating | coin | zoom | playing | unzoom | standing | mom | over
+  mode: 'walk',              // front | walk | seating | coin | zoom | playing | unzoom | standing | mom | over
   t: 0,
   machines: [],
   solids: [],
@@ -63,9 +63,9 @@ export const Arcade = {
     this.resize();
     window.addEventListener('resize', () => this.resize());
 
+    this.mode = 'walk';
     const s = Session.load();
-    if (s && s.inside) {
-      this.mode = 'walk';
+    if (s) {
       this.player.x = s.x; this.player.y = s.y;
       this.cam.x = s.x; this.cam.y = s.y - 40;
     }
@@ -149,9 +149,7 @@ export const Arcade = {
   update(dt) {
     if (this.sayTimer > 0) this.sayTimer -= dt;
 
-    if (this.mode === 'front') this.updateFront(dt);
-    else if (this.mode === 'entering') this.updateEntering(dt);
-    else if (this.mode === 'walk') this.updateWalk(dt);
+    if (this.mode === 'walk') this.updateWalk(dt);
 
     this.t += dt;
     if (this.timer > 0) this.timer -= dt;
@@ -162,25 +160,8 @@ export const Arcade = {
     switch (this.mode) {
       case 'mom':      this.updateMom(dt); break;
     }
-    if (this.mode !== 'front' && this.mode !== 'over') this.updateNpcs(dt);
-    if (this.mode !== 'playing' && this.mode !== 'front') this.updateCamera(dt);
-  },
-
-  updateFront(dt) {
-    this.doorOpen = Math.max(0, this.doorOpen - dt);
-  },
-
-  updateEntering(dt) {
-    this.doorOpen = Math.min(1, this.doorOpen + dt * 2);
-    this.fade = Math.min(1, this.fade + dt * 1.6);
-    if (this.fade >= 1) {
-      this.mode = 'walk';
-      this.fade = 0;
-      this.player.x = ROOM.spawn.x; this.player.y = ROOM.spawn.y;
-      this.cam.x = this.player.x; this.cam.y = this.player.y - 40;
-      Session.patch({ inside: true });
-      if (this.hooks.onArrive) this.hooks.onArrive();
-    }
+    if (this.mode !== 'over') this.updateNpcs(dt);
+    if (this.mode !== 'playing') this.updateCamera(dt);
   },
 
   updateWalk(dt) {
@@ -375,15 +356,6 @@ export const Arcade = {
     ctx.fillStyle = '#07060b';
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    if (this.mode === 'front' || this.mode === 'entering') {
-      ctx.setTransform(S, 0, 0, S, 0, 0);
-      const g = drawStorefront(ctx, this.vw, this.vh, this.t, this.doorOpen);
-      drawFrontPlayer(ctx, g.doorX + 26, g.groundY + 12, this.t, this.mode === 'entering');
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      this.drawFade();
-      return;
-    }
-
     const sh = this.cam.shake;
     const ox = sh ? (Math.random() - 0.5) * sh * 2 : 0;
     const oy = sh ? (Math.random() - 0.5) * sh * 2 : 0;
@@ -420,9 +392,6 @@ export const Arcade = {
     for (const it of items) it.draw();
 
     drawLights(ctx, CEILING_LIGHTS, this.machines, this.t);
-    if (this.mode === 'walk' && !Session.played) {
-      drawGuide(ctx, p.x, p.y, this.guideTarget(), this.t);
-    }
     drawCeiling(ctx, CEILING_TUBES, this.t);
     if (this.mode === 'mom' && this.momPhase >= 1) this.drawDoorSpotlight(ctx);
 
@@ -471,15 +440,6 @@ export const Arcade = {
 
   /* ------------------------------------------------------------- commands */
 
-  enter() {
-    if (this.mode !== 'front') return;
-    this.mode = 'entering';
-    this.doorOpen = 0;
-    this.fade = 0;
-    Sound.start();
-    Sound.door();
-  },
-
   /** Enter / Space / the A button / tapping the prompt. */
   interact() {
     if (this.mode !== 'walk') return;
@@ -487,12 +447,8 @@ export const Arcade = {
     if (!f) return;
 
     if (f.kind === 'change') {
-      if (Session.exchanged) { this.say('이미 다 바꿨다.', 1.8); Sound.deny(); return; }
-      Session.exchange();
-      Sound.exchange();
-      this.say('₩1,000 → ₩100 열 개. 이제 게임기를 누르자.', 3.2);
-      if (this.hooks.onCoins) this.hooks.onCoins();
-      if (this.hooks.onFocus) this.hooks.onFocus(this.focus);   // relabel the plate
+      this.say('동전을 바꿀 필요가 없다.', 2.0);
+      Sound.deny();
       return;
     }
 
@@ -506,21 +462,6 @@ export const Arcade = {
   },
 
   directPlay(m) {
-    if (Session.coins <= 0) {
-      if (!Session.exchanged) {
-        Session.exchange();
-        Sound.exchange();
-        if (this.hooks.onCoins) this.hooks.onCoins();
-      } else {
-        this.outOfMoney();
-        return;
-      }
-    }
-    
-    Session.spend();
-    Sound.coin();
-    if (this.hooks.onCoins) this.hooks.onCoins();
-    
     this.player.x = m.seat.x;
     this.player.y = m.seat.y;
     this.cam.x = m.seat.x;
@@ -608,13 +549,7 @@ export const Arcade = {
     if (q.stage === 'change') {
       if (gaveUp) { this.player.x = this.changeSpot.x; this.player.y = this.changeSpot.y + 26; }
       this.updateFocus();
-      if (!Session.exchanged) {
-        Session.exchange();
-        Sound.exchange();
-        this.say('₩1,000 → ₩100 열 개.', 2.4);
-        if (this.hooks.onCoins) this.hooks.onCoins();
-        if (this.hooks.onFocus) this.hooks.onFocus(this.focus);
-      }
+      this.say('동전을 바꿀 필요가 없다.', 2.0);
       this.pending = null;
       return;
     }
@@ -626,38 +561,11 @@ export const Arcade = {
     if (m.game.status !== 'playable') { Sound.deny(); this.say('고장난 것 같다.', 2.0); return; }
   },
 
-  /**
-   * No coins and no note left means the day is simply over — end it, so the
-   * player gets a fresh ₩1,000. Saying "동전이 없다" and doing nothing leaves
-   * them tapping cabinets forever with no way out, which is exactly what it
-   * looked like: walk up to a machine, stop, nothing happens.
-   */
-  outOfMoney() {
-    this.say('동전이 다 떨어졌다.', 2.2);
-    Sound.deny();
-    this.startMomEvent();
-  },
-
   /** Manual input always wins: cancel whatever we were walking toward. */
   cancelAuto() { this.autoTarget = null; this.pending = null; this.followPlayer(); },
 
-  /**
-   * Where a lost first-time visitor should be heading: the coin changer while
-   * they still have the note, otherwise the nearest machine that actually works.
-   */
   guideTarget() {
-    if (Session.played) return null;
-    if (!Session.exchanged) {
-      const c = this.changeSpot;
-      return c ? { x: c.x, y: c.y + 26 } : null;
-    }
-    let best = null, bestD = Infinity;
-    for (const m of this.machines) {
-      if (m.game.status !== 'playable') continue;
-      const d = Math.hypot(m.seat.x - this.player.x, m.seat.y - this.player.y);
-      if (d < bestD) { bestD = d; best = m; }
-    }
-    return best ? { x: best.seat.x, y: best.seat.y } : null;
+    return null;
   },
 
   say(text, seconds) { if (this.hooks.onSay) this.hooks.onSay(text, seconds); },
@@ -666,7 +574,7 @@ export const Arcade = {
     Session.reset();
     this.pending = null;
     this.camFree = false;
-    this.mode = 'front';
+    this.mode = 'walk';
     this.momPhase = 0;
     this.fade = 0;
     this.redFlash = 0;

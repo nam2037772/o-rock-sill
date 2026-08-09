@@ -15,6 +15,7 @@ const canvas = document.getElementById('scene');
 
 Arcade.init(canvas);
 UI.init(Arcade);
+UI.enteredArcade();
 
 /* ------------------------------------------------------------------- hooks */
 
@@ -58,9 +59,7 @@ addEventListener('keydown', (e) => {
   if (e.code === 'Enter' || e.code === 'Space' || e.code === 'NumpadEnter') {
     e.preventDefault();
     firstGesture();
-    if (Arcade.mode === 'front') Arcade.enter();
-    else if (Arcade.mode === 'over') UI.restart();
-    else Arcade.interact();
+    Arcade.interact();
   }
 });
 
@@ -104,7 +103,6 @@ const endDrag = (e) => {
   down = null;
   if (wasDrag) return;                       // a look-around, not a choice
 
-  if (Arcade.mode === 'front') { Arcade.enter(); return; }
   if (Arcade.mode !== 'walk' || !quick) return;
 
   const w = Arcade.toWorld(e.clientX, e.clientY);
@@ -153,21 +151,6 @@ if (wanted) {
   }
 }
 
-// the engine flips to 'walk' on its own after the door animation
-let wasFront = Arcade.mode === 'front';
-setInterval(() => {
-  const isFront = Arcade.mode === 'front' || Arcade.mode === 'entering';
-  if (wasFront && !isFront) { UI.enteredArcade(); UI.paintWallet(); }
-  wasFront = isFront;
-}, 120);
-
 // handy from the browser console, and what the smoke tests poke at
 window.__arcade = Arcade;
 window.__session = Session;
-
-// restored mid-session by a refresh
-if (Session.inside && Arcade.mode === 'walk') {
-  UI.enteredArcade();
-  UI.paintWallet();
-  wasFront = false;
-}

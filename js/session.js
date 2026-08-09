@@ -13,14 +13,14 @@ export const COIN_VALUE = 100;
 export const COINS_PER_BILL = 10;
 
 export const Session = {
-  bill: true,          // the ₩1,000 note, still folded up
-  exchanged: false,
-  coins: 0,
+  bill: false,          // the ₩1,000 note, still folded up
+  exchanged: true,
+  coins: 99,
   spent: 0,
   x: 0, y: 0,
   machine: null,
-  inside: false,
-  played: false,     // true once a game has been launched; retires the on-screen guidance
+  inside: true,
+  played: true,     // true once a game has been launched; retires the on-screen guidance
 
   load() {
     try {
@@ -45,31 +45,23 @@ export const Session = {
 
   /** Feed the note into the changer. */
   exchange() {
-    if (this.exchanged) return false;
-    this.bill = false;
-    this.exchanged = true;
-    this.coins = COINS_PER_BILL;
-    this.save();
     return true;
   },
 
   spend() {
-    if (this.coins <= 0) return false;
-    this.coins--;
-    this.spent++;
     this.played = true;
     this.save();
     return true;
   },
 
   reset() {
-    this.bill = true;
-    this.exchanged = false;
-    this.coins = 0;
+    this.bill = false;
+    this.exchanged = true;
+    this.coins = 99;
     this.spent = 0;
     this.machine = null;
-    this.inside = false;
-    this.played = false;
+    this.inside = true;
+    this.played = true;
     this.x = 0; this.y = 0;
     this.save();
   }
