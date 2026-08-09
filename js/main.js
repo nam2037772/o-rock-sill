@@ -8,7 +8,6 @@
 
 import { Arcade } from './engine.js';
 import { UI } from './ui.js';
-import { Launcher } from './launcher.js';
 import { Sound } from './audio.js';
 import { Session } from './session.js';
 
@@ -16,7 +15,6 @@ const canvas = document.getElementById('scene');
 
 Arcade.init(canvas);
 UI.init(Arcade);
-Launcher.init(() => Arcade.returnFromGame());
 
 /* ------------------------------------------------------------------- hooks */
 
@@ -25,10 +23,6 @@ Arcade.hooks = {
   onSay: (text, secs) => UI.say(text, secs),
   onArrive: () => UI.arrived(),
   onCoins: () => UI.paintWallet(),
-  onSit: () => UI.hidePlacard(),
-  onCredit: () => { UI.paintWallet(); UI.say('CREDIT 1', 1.4); },
-  onLaunch: (m) => Launcher.open(m.game),
-  onStood: () => Arcade.updateFocus(),
   onMom: (phase) => UI.momBeat(phase)
 };
 
@@ -54,7 +48,6 @@ function applyAxis() {
 }
 
 addEventListener('keydown', (e) => {
-  if (Launcher.isOpen()) return;             // the game has the keyboard
   if (AXIS[e.code]) {
     HELD.add(e.code);
     applyAxis();
@@ -171,7 +164,6 @@ setInterval(() => {
 // handy from the browser console, and what the smoke tests poke at
 window.__arcade = Arcade;
 window.__session = Session;
-window.__launcher = Launcher;
 
 // restored mid-session by a refresh
 if (Session.inside && Arcade.mode === 'walk') {

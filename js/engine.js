@@ -166,6 +166,10 @@ export const Arcade = {
     if (this.mode !== 'playing' && this.mode !== 'front') this.updateCamera(dt);
   },
 
+  updateFront(dt) {
+    this.doorOpen = Math.max(0, this.doorOpen - dt);
+  },
+
   updateEntering(dt) {
     this.doorOpen = Math.min(1, this.doorOpen + dt * 2);
     this.fade = Math.min(1, this.fade + dt * 1.6);
