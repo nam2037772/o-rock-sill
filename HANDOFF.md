@@ -231,6 +231,13 @@ Three suites, all run on desktop (1440×810) and mobile (390×844):
 - **Tap-only.** Never touches a movement control; clicks cabinets cold and
   requires every one to end in a running game.
 
+- **Production cabinet walk-through.** Runs against the live site and, for each
+  of the five active cabinets in turn: clicks the cabinet, confirms the player
+  walks over and sits, confirms exactly one ₩100 coin is deducted, confirms the
+  frame loaded the URL the registry registered, confirms 오락실로 / 다시하기 are
+  both present, and confirms exit returns the player to the arcade standing.
+  Five plays, five coins, five left — verified on desktop and mobile.
+
 All passing against production with no JS errors. All five game URLs return 200
 and there are no production asset 404s.
 
