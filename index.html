@@ -81,20 +81,15 @@
       <span id="cab-title">—</span>
       <span class="cab-credit">CREDIT 1</span>
       <span class="cab-btns">
-        <button id="cab-retry" class="plate">다시하기</button>
-        <button id="cab-exit" class="plate plate-exit">오락실로</button>
+        <button id="cab-exit" class="plate plate-exit">오락실로 돌아가기</button>
       </span>
     </div>
     <div class="cab-screen">
-      <iframe id="game-frame" title="게임" src="about:blank"
-              allow="autoplay; fullscreen; gamepad; accelerometer; gyroscope"
-              referrerpolicy="no-referrer"></iframe>
-      <div class="fx fx-scan cab-fx"></div>
-      <div id="cab-over" hidden>
-        <p class="over-main">GAME OVER</p>
-        <button id="over-retry" class="plate plate-go">다시하기</button>
-        <button id="over-exit" class="plate">오락실로</button>
+      <div id="cab-splash" class="cab-splash">
+        <a id="game-link" href="#" target="_blank" class="plate plate-go">새 창에서 게임 열기</a>
+        <p class="splash-desc">버튼을 눌러 게임을 시작하세요.<br>새 창이 열리면 오락실 탭은 잠시 켜두세요!</p>
       </div>
+      <div class="fx fx-scan cab-fx"></div>
     </div>
   </div>
 </div>
