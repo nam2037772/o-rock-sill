@@ -117,7 +117,7 @@ const endDrag = (e) => {
   const w = Arcade.toWorld(e.clientX, e.clientY);
   const hit = Arcade.pick(w.x, w.y);
   if (hit) {
-    if (hit.kind === 'machine' && hit.ref.game.status === 'playable' && Session.coins > 0) {
+    if (hit.kind === 'machine' && hit.ref.game.status === 'playable') {
       Arcade.directPlay(hit.ref);
     } else {
       Arcade.tapTarget(hit);

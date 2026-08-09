@@ -498,19 +498,19 @@ export const Arcade = {
       this.say('고장난 것 같다.', 2.0);
       return;
     }
-    if (Session.coins <= 0) {
-      if (!Session.exchanged) { Sound.deny(); this.say('동전부터 바꿔야 한다.', 2.4); return; }
-      this.outOfMoney();
-      return;
-    }
     this.directPlay(m);
   },
 
   directPlay(m) {
     if (Session.coins <= 0) {
-      if (!Session.exchanged) { this.say('먼저 동전으로 바꾸고.', 2.0); return; }
-      this.outOfMoney();
-      return;
+      if (!Session.exchanged) {
+        Session.exchange();
+        Sound.exchange();
+        if (this.hooks.onCoins) this.hooks.onCoins();
+      } else {
+        this.outOfMoney();
+        return;
+      }
     }
     
     Session.spend();
@@ -591,18 +591,9 @@ export const Arcade = {
       return;
     }
     const m = hit.ref;
-    if (m.game.status === 'playable' && Session.coins <= 0 && Session.exchanged) {
-      this.outOfMoney();
-      return;
-    }
-    if (m.game.status === 'playable' && !Session.exchanged) {
-      // no coins yet: swing past the changer first, then carry on to the machine
-      this.pending = { stage: 'change', machine: m };
-      this.autoTarget = { x: this.changeSpot.x, y: this.changeSpot.y + 26, life: 5 };
-      this.say('먼저 동전으로 바꾸고.', 2.0);
-      return;
-    }
-    this.pending = { stage: 'sit', machine: m };
+    if (m.game.status === 'playable') return; // Handled by directPlay
+
+    this.pending = { stage: 'broken', machine: m };
     this.autoTarget = { x: m.seat.x, y: m.seat.y, life: 5 };
   },
 
@@ -620,9 +611,7 @@ export const Arcade = {
         if (this.hooks.onCoins) this.hooks.onCoins();
         if (this.hooks.onFocus) this.hooks.onFocus(this.focus);
       }
-      if (!q.machine) { this.pending = null; return; }
-      q.stage = 'sit';
-      this.autoTarget = { x: q.machine.seat.x, y: q.machine.seat.y, life: 5 };
+      this.pending = null;
       return;
     }
 
@@ -631,8 +620,6 @@ export const Arcade = {
     if (gaveUp) { this.player.x = m.seat.x; this.player.y = m.seat.y; }
     this.updateFocus();
     if (m.game.status !== 'playable') { Sound.deny(); this.say('고장난 것 같다.', 2.0); return; }
-    if (Session.coins <= 0) { this.outOfMoney(); return; }
-    this.say('게임을 시작하려면 한 번 더 누르자.', 3.0);
   },
 
   /**
