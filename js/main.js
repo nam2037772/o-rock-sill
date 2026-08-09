@@ -116,9 +116,15 @@ const endDrag = (e) => {
 
   const w = Arcade.toWorld(e.clientX, e.clientY);
   const hit = Arcade.pick(w.x, w.y);
-  // tapping a machine is the whole instruction: walk, change money, sit, play
-  if (hit) Arcade.tapTarget(hit);
-  else Arcade.walkTo(w.x, w.y);
+  if (hit) {
+    if (hit.kind === 'machine' && hit.ref.game.status === 'playable' && Session.coins > 0) {
+      Arcade.directPlay(hit.ref);
+    } else {
+      Arcade.tapTarget(hit);
+    }
+  } else {
+    Arcade.walkTo(w.x, w.y);
+  }
 };
 canvas.addEventListener('pointerup', endDrag);
 canvas.addEventListener('pointercancel', () => { down = null; });

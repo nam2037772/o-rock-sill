@@ -268,44 +268,6 @@ html, body {
 .over-stat { font-family: var(--mono); font-size: 12px; color: #5f594f; margin-bottom: 6px; }
 #again-btn { margin-top: 8px; font-size: 15px; padding: 12px 24px; }
 
-/* ------------------------------------------------- a game in the cabinet */
-
-#cabinet {
-  position: absolute; inset: 0;
-  display: none;
-  flex-direction: column;
-  background: #000;
-}
-#cabinet.is-open { display: flex; animation: crtOn .45s ease-out; }
-@keyframes crtOn {
-  0%   { opacity: 0; filter: brightness(6) blur(2px); transform: scaleY(.004); }
-  35%  { opacity: 1; filter: brightness(3); transform: scaleY(1); }
-  100% { filter: none; }
-}
-
-.cab-bar {
-  flex: 0 0 auto;
-  display: flex; align-items: center; gap: 10px;
-  padding: calc(6px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
-           6px calc(10px + env(safe-area-inset-left));
-  background: linear-gradient(#232029, #15131a);
-  border-bottom: 2px solid #0a080e;
-  font-family: var(--mono); font-size: 12px; letter-spacing: .1em; color: #cbc0aa;
-}
-#cab-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cab-credit { color: var(--brass); font-size: 11px; white-space: nowrap; }
-.cab-btns { margin-left: auto; display: flex; gap: 6px; flex: 0 0 auto; }
-.cab-btns .plate { font-size: 12px; padding: 6px 10px; }
-
-.cab-screen { position: relative; flex: 1 1 auto; background: #05040a; display: flex; align-items: center; justify-content: center; }
-.cab-splash {
-  display: flex; flex-direction: column; align-items: center; gap: 20px;
-  text-align: center; z-index: 10;
-}
-.cab-splash .plate { font-size: 16px; padding: 14px 30px; animation: pulse 2s infinite; }
-.splash-desc { font-size: 14px; color: #a09789; line-height: 1.6; }
-@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-.cab-fx { opacity: .12; }
 
 /* ------------------------------------------------------------------ tweaks */
 

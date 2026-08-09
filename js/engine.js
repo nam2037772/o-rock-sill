@@ -147,6 +147,12 @@ export const Arcade = {
   /* ----------------------------------------------------------------- update */
 
   update(dt) {
+    if (this.sayTimer > 0) this.sayTimer -= dt;
+
+    if (this.mode === 'front') this.updateFront(dt);
+    else if (this.mode === 'entering') this.updateEntering(dt);
+    else if (this.mode === 'walk') this.updateWalk(dt);
+
     this.t += dt;
     if (this.timer > 0) this.timer -= dt;
     FX.blackout = Math.max(0, FX.blackout - dt * 0.8);
@@ -154,15 +160,6 @@ export const Arcade = {
     this.cam.shake = Math.max(0, this.cam.shake - dt * 14);
 
     switch (this.mode) {
-      case 'front':    this.doorOpen = Math.max(0, this.doorOpen - dt); break;
-      case 'entering': this.updateEntering(dt); break;
-      case 'walk':     this.updateWalk(dt); break;
-      case 'seating':  this.updateSeating(dt); break;
-      case 'coin':     this.updateCoin(dt); break;
-      case 'zoom':     this.updateZoom(dt); break;
-      case 'playing':  break;
-      case 'unzoom':   this.updateUnzoom(dt); break;
-      case 'standing': this.updateStanding(dt); break;
       case 'mom':      this.updateMom(dt); break;
     }
     if (this.mode !== 'front' && this.mode !== 'over') this.updateNpcs(dt);
@@ -250,99 +247,6 @@ export const Arcade = {
     if (dy && !hits(p.x, p.y + dy)) p.y += dy;
     p.x = Math.max(12, Math.min(ROOM.w - 12, p.x));
     p.y = Math.max(70, Math.min(ROOM.h - 8, p.y));
-  },
-
-  updateSeating(dt) {
-    const p = this.player, m = this.active;
-    const tx = m.seat.x, ty = m.seat.y;
-    const dx = tx - p.x, dy = ty - p.y, d = Math.hypot(dx, dy);
-    if (d > 2) {
-      const k = Math.min(1, (WALK * 1.5 * dt) / d);
-      p.x += dx * k; p.y += dy * k;
-      p.moving = true; p.anim += dt;
-      p.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 1 : 2) : (dy < 0 ? 3 : 0);
-    } else {
-      p.x = tx; p.y = ty; p.moving = false; p.dir = 3;
-      if (!p.sitting) {
-        p.sitting = true;
-        m.occupied = true;
-        Sound.button();
-        this.timer = 0.45;
-      }
-      if (this.timer <= 0) {
-        this.mode = 'coin';
-        this.timer = 0.55;
-        if (this.hooks.onSeated) this.hooks.onSeated(m);
-      }
-    }
-  },
-
-  updateCoin(dt) {
-    // the beat where you actually put the coin in
-    if (this.timer > 0) return;
-    if (!this.coinDropped) {
-      this.coinDropped = true;
-      Session.spend();
-      Sound.coin();
-      this.timer = 0.7;
-      if (this.hooks.onCredit) this.hooks.onCredit();
-      return;
-    }
-    Sound.credit();
-    this.coinDropped = false;
-    this.mode = 'zoom';
-    this.timer = 1.0;
-    this.zoomFrom = { x: this.cam.x, y: this.cam.y, scale: this.cam.scale };
-  },
-
-  updateZoom(dt) {
-    const m = this.active;
-    const k = 1 - Math.max(0, this.timer) / 1.0;
-    const e = k * k * (3 - 2 * k);                 // smoothstep
-    this.cam.x = this.zoomFrom.x + (m.crt.x - this.zoomFrom.x) * e;
-    this.cam.y = this.zoomFrom.y + (m.crt.y - this.zoomFrom.y) * e;
-    this.cam.scale = this.zoomFrom.scale + (3.4 - this.zoomFrom.scale) * e;
-    this.fade = Math.max(0, (e - 0.7) / 0.3);
-    if (this.timer <= 0) {
-      this.mode = 'playing';
-      this.fade = 1;
-      Sound.duck();
-      if (this.hooks.onLaunch) this.hooks.onLaunch(m);
-    }
-  },
-
-  updateUnzoom(dt) {
-    const k = 1 - Math.max(0, this.timer) / 0.9;
-    const e = k * k * (3 - 2 * k);
-    const m = this.active;
-    this.cam.x = m.crt.x + (m.seat.x - m.crt.x) * e;
-    this.cam.y = m.crt.y + (m.seat.y - 40 - m.crt.y) * e;
-    this.cam.scale = 3.4 + (1 - 3.4) * e;
-    this.fade = Math.max(0, 1 - k * 2.2);
-    if (this.timer <= 0) {
-      this.mode = 'standing';
-      this.timer = 0.5;
-      this.fade = 0;
-    }
-  },
-
-  updateStanding(dt) {
-    const p = this.player, m = this.active;
-    if (this.timer > 0.2) return;
-    if (p.sitting) {
-      p.sitting = false;
-      m.occupied = false;
-      Sound.button();
-      // step back off the stool into the aisle
-      this.autoTarget = { x: m.seat.x, y: Math.min(ROOM.h - 30, m.seat.y + 22), life: 1.2 };
-    }
-    if (this.timer <= 0) {
-      this.mode = 'walk';
-      this.active = null;
-      Session.patch({ x: p.x, y: p.y });
-      if (Session.coins <= 0) this.startMomEvent();
-      else if (this.hooks.onStood) this.hooks.onStood();
-    }
   },
 
   /* ------------------------------------------------------- the boss fight */
@@ -582,7 +486,7 @@ export const Arcade = {
       if (Session.exchanged) { this.say('이미 다 바꿨다.', 1.8); Sound.deny(); return; }
       Session.exchange();
       Sound.exchange();
-      this.say('₩1,000 → ₩100 열 개. 이제 게임기 앞에 앉자.', 3.2);
+      this.say('₩1,000 → ₩100 열 개. 이제 게임기를 누르자.', 3.2);
       if (this.hooks.onCoins) this.hooks.onCoins();
       if (this.hooks.onFocus) this.hooks.onFocus(this.focus);   // relabel the plate
       return;
@@ -599,24 +503,27 @@ export const Arcade = {
       this.outOfMoney();
       return;
     }
-    this.sitAt(m);
+    this.directPlay(m);
   },
 
-  sitAt(m) {
-    this.active = m;
-    this.mode = 'seating';
-    this.autoTarget = null;
-    this.coinDropped = false;
-    Session.patch({ x: this.player.x, y: this.player.y, machine: m.game.id });
-    if (this.hooks.onSit) this.hooks.onSit(m);
-  },
+  directPlay(m) {
+    if (Session.coins <= 0) {
+      if (!Session.exchanged) { this.say('먼저 동전으로 바꾸고.', 2.0); return; }
+      this.outOfMoney();
+      return;
+    }
+    
+    Session.spend();
+    Sound.coin();
+    if (this.hooks.onCoins) this.hooks.onCoins();
+    
+    this.player.x = m.seat.x;
+    this.player.y = m.seat.y;
+    this.cam.x = m.seat.x;
+    this.cam.y = m.seat.y - 40;
+    this.updateFocus();
 
-  /** Called by the launcher when the player leaves a game. */
-  returnFromGame() {
-    if (this.mode !== 'playing') return;
-    this.mode = 'unzoom';
-    this.timer = 0.9;
-    Sound.unduck();
+    window.open(m.game.url, '_blank');
   },
 
   /** Walk to a point the player tapped, and pick up any machine there. */
@@ -725,7 +632,7 @@ export const Arcade = {
     this.updateFocus();
     if (m.game.status !== 'playable') { Sound.deny(); this.say('고장난 것 같다.', 2.0); return; }
     if (Session.coins <= 0) { this.outOfMoney(); return; }
-    this.sitAt(m);
+    this.say('게임을 시작하려면 한 번 더 누르자.', 3.0);
   },
 
   /**
