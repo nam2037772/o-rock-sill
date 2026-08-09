@@ -1,0 +1,325 @@
+/*
+  O-ROCK-SILL
+  The chrome around the canvas is deliberately not "web UI". Every panel is a
+  scratched metal instruction plate, every button is something you'd actually
+  push on a machine. Nothing floats, nothing has a soft shadow, nothing glows
+  more than a real bulb would.
+*/
+
+:root {
+  --ink:      #e6dcc6;
+  --ink-dim:  #9a9186;
+  --plate:    #2c2830;
+  --plate-hi: #4a444f;
+  --plate-lo: #14121a;
+  --brass:    #c9a24a;
+  --red:      #b8402f;
+  --kr: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --mono: "Courier New", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* several panels below set display, which would otherwise beat [hidden] and
+   leave an invisible full-screen layer eating every click */
+[hidden] { display: none !important; }
+
+html, body {
+  height: 100%;
+  background: #07060b;
+  color: var(--ink);
+  font-family: var(--kr);
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+#app { position: fixed; inset: 0; }
+
+/* ------------------------------------------------------------------ canvas */
+
+#stage { position: absolute; inset: 0; }
+
+#scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #07060b;
+}
+
+/* the room is behind glass: scanlines, drifting haze, a heavy vignette */
+.fx { position: absolute; inset: 0; pointer-events: none; }
+
+.fx-scan {
+  background: repeating-linear-gradient(
+    to bottom, rgba(0,0,0,.28) 0 1px, rgba(0,0,0,0) 1px 3px);
+  mix-blend-mode: multiply;
+  opacity: .55;
+}
+
+.fx-haze {
+  background:
+    radial-gradient(60% 50% at 30% 30%, rgba(150,130,110,.07), transparent 70%),
+    radial-gradient(50% 45% at 75% 60%, rgba(120,140,160,.06), transparent 70%);
+  animation: drift 34s ease-in-out infinite alternate;
+}
+@keyframes drift {
+  from { transform: translate3d(-2%, -1%, 0) scale(1.05); }
+  to   { transform: translate3d(3%, 2%, 0) scale(1.12); }
+}
+
+.fx-vig {
+  background: radial-gradient(120% 100% at 50% 45%, transparent 45%, rgba(0,0,0,.72) 100%);
+}
+
+/* ------------------------------------------------------------------ plates */
+
+.plate {
+  font-family: var(--kr);
+  font-size: 13px;
+  letter-spacing: .04em;
+  color: var(--ink);
+  background: linear-gradient(#3a3440, #232029);
+  border: 1px solid var(--plate-lo);
+  border-top-color: var(--plate-hi);
+  border-left-color: var(--plate-hi);
+  padding: 8px 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #0c0a11;
+  touch-action: manipulation;
+}
+.plate:active { transform: translateY(2px); box-shadow: 0 0 0 #0c0a11; }
+
+.plate-go {
+  background: linear-gradient(#7d3a2c, #55251c);
+  border-top-color: #a85c46;
+  border-left-color: #a85c46;
+  color: #f6e6cf;
+  font-weight: 700;
+}
+.plate-exit { background: linear-gradient(#4a4438, #2b2820); border-top-color: #6d6552; }
+
+/* --------------------------------------------------------------- the front */
+
+#front {
+  position: absolute; inset: 0;
+  display: grid; place-items: end center;
+  padding: 0 16px calc(28px + env(safe-area-inset-bottom));
+  text-align: center;
+  transition: opacity .5s ease;
+}
+#front.gone { opacity: 0; pointer-events: none; }
+
+.front-line { font-size: 15px; color: var(--ink-dim); margin-bottom: 12px; text-shadow: 0 2px 4px #000; }
+.front-line b { color: var(--brass); }
+
+#enter-btn { font-size: 16px; padding: 12px 26px; animation: nudge 2.4s ease-in-out infinite; }
+@keyframes nudge { 0%,88%,100% { transform: none; } 92% { transform: translateY(-2px); } }
+
+.front-keys {
+  margin-top: 14px; font-family: var(--mono); font-size: 11px;
+  color: #6f6a63; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+}
+.front-keys b { color: #9a9186; }
+
+/* ----------------------------------------------------------------- the HUD */
+
+#hud {
+  position: absolute; left: 0; right: 0; top: 0;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: calc(10px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
+           0 calc(10px + env(safe-area-inset-left));
+  pointer-events: none;
+}
+#hud > * { pointer-events: auto; }
+
+#wallet {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(12,10,16,.62);
+  border: 1px solid #241f2a; border-top-color: #3a333f;
+  padding: 5px 9px;
+}
+#coins { display: flex; gap: 3px; }
+.coin {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #e8c87a, #8a6a2a 70%);
+  box-shadow: inset 0 -1px 0 #5c4418;
+}
+.coin.spent { background: #2a2630; box-shadow: none; opacity: .5; }
+#won { font-family: var(--mono); font-size: 11px; color: var(--brass); letter-spacing: .05em; }
+
+#sound-btn { font-family: var(--mono); font-size: 11px; padding: 5px 9px; }
+#sound-btn[aria-pressed="false"] { color: #6b6560; }
+
+/* -------------------------------------------------------- machine placard */
+
+#placard {
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  width: min(420px, calc(100vw - 32px));
+  background: linear-gradient(#2a262f, #1c1922);
+  border: 1px solid #14121a; border-top-color: #443d4a; border-left-color: #443d4a;
+  padding: 10px 14px 12px;
+  box-shadow: 0 6px 0 rgba(0,0,0,.5);
+  text-align: center;
+}
+/* four rivets, like a real instruction plate */
+#placard::before, #placard::after {
+  content: ""; position: absolute; top: 5px; width: 4px; height: 4px; border-radius: 50%;
+  background: #6b6470; box-shadow: 0 calc(100% + 0px) 0 #6b6470;
+}
+#placard::before { left: 6px; }
+#placard::after  { right: 6px; }
+
+.pl-head {
+  display: flex; align-items: baseline; justify-content: center; gap: 8px;
+  font-family: var(--mono); font-size: 16px; font-weight: 700;
+  letter-spacing: .08em; color: #f2e7cf;
+}
+#pl-year { font-size: 11px; color: var(--brass); }
+#pl-genre {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .16em;
+  color: #7f7a86; margin-top: 2px;
+}
+#pl-desc { font-size: 12px; line-height: 1.5; color: #b3aa9c; margin: 7px 0 9px; }
+#pl-go { width: 100%; }
+#placard.dead #pl-desc { color: #8a8279; }
+
+/* ---------------------------------------------------------------- subtitle */
+
+#say {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  background: rgba(8,7,12,.86);
+  border-left: 3px solid var(--brass);
+  padding: 7px 14px;
+  font-size: 14px; color: #e8dcc4;
+  white-space: nowrap;
+  animation: pop .18s ease-out;
+}
+@keyframes pop { from { opacity: 0; transform: translate(-50%, 4px); } }
+
+/* -------------------------------------------------------- touch controls */
+
+#touch { position: absolute; inset: 0; pointer-events: none; }
+#touch > * { pointer-events: auto; }
+
+#stick {
+  position: absolute;
+  left: calc(20px + env(safe-area-inset-left));
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  width: 108px; height: 108px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #221f28, #0e0c13 70%);
+  border: 2px solid #35303c;
+  box-shadow: inset 0 4px 10px rgba(0,0,0,.7);
+  touch-action: none;
+}
+#knob {
+  position: absolute; left: 50%; top: 50%;
+  width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%;
+  background: radial-gradient(circle at 36% 30%, #e05a48, #7d2418 72%);
+  border: 1px solid #40120c;
+  box-shadow: 0 3px 0 #2a0c07;
+}
+
+#abtn {
+  position: absolute;
+  right: calc(24px + env(safe-area-inset-right));
+  bottom: calc(34px + env(safe-area-inset-bottom));
+  width: 84px; height: 84px; border-radius: 50%;
+  border: 2px solid #4a1810;
+  background: radial-gradient(circle at 38% 30%, #d8b24a, #8a6118 72%);
+  box-shadow: 0 5px 0 #3a2a0c;
+  color: #2c1e08; font-family: var(--kr); font-size: 15px; font-weight: 700;
+  cursor: pointer; touch-action: manipulation;
+}
+#abtn:active { transform: translateY(4px); box-shadow: 0 1px 0 #3a2a0c; }
+
+/* -------------------------------------------------------------- mom / over */
+
+#mom, #over {
+  position: absolute; inset: 0;
+  display: grid; place-content: center; justify-items: center; gap: 10px;
+  text-align: center; padding: 24px;
+  pointer-events: none;
+}
+#over { background: #000; pointer-events: auto; }
+
+.mom-main {
+  font-size: clamp(20px, 6.2vw, 40px); font-weight: 800; color: #fff2dc;
+  text-shadow: 0 0 18px rgba(220,60,40,.75), 0 4px 0 #3a0d08;
+  animation: slam .5s cubic-bezier(.2,1.6,.4,1) both, judder 2.6s .5s steps(2) infinite;
+}
+.mom-sub {
+  font-size: clamp(13px, 3.4vw, 19px); color: #e8a08a; letter-spacing: .06em;
+  animation: slam .5s .45s cubic-bezier(.2,1.6,.4,1) both;
+}
+@keyframes slam { from { transform: scale(2.4); opacity: 0; } }
+@keyframes judder { 0%,92%,100% { transform: none; } 96% { transform: translate(2px,-1px); } }
+
+.over-main {
+  font-family: var(--mono); font-size: clamp(30px, 9vw, 62px); font-weight: 700;
+  letter-spacing: .12em; color: #d8cfbb;
+}
+.over-sub { font-size: clamp(14px, 3.6vw, 20px); color: #8d8578; }
+.over-stat { font-family: var(--mono); font-size: 12px; color: #5f594f; margin-bottom: 6px; }
+#again-btn { margin-top: 8px; font-size: 15px; padding: 12px 24px; }
+
+/* ------------------------------------------------- a game in the cabinet */
+
+#cabinet {
+  position: absolute; inset: 0;
+  display: none;
+  flex-direction: column;
+  background: #000;
+}
+#cabinet.is-open { display: flex; animation: crtOn .45s ease-out; }
+@keyframes crtOn {
+  0%   { opacity: 0; filter: brightness(6) blur(2px); transform: scaleY(.004); }
+  35%  { opacity: 1; filter: brightness(3); transform: scaleY(1); }
+  100% { filter: none; }
+}
+
+.cab-bar {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 10px;
+  padding: calc(6px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
+           6px calc(10px + env(safe-area-inset-left));
+  background: linear-gradient(#232029, #15131a);
+  border-bottom: 2px solid #0a080e;
+  font-family: var(--mono); font-size: 12px; letter-spacing: .1em; color: #cbc0aa;
+}
+#cab-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cab-credit { color: var(--brass); font-size: 11px; white-space: nowrap; }
+.cab-btns { margin-left: auto; display: flex; gap: 6px; flex: 0 0 auto; }
+.cab-btns .plate { font-size: 12px; padding: 6px 10px; }
+
+.cab-screen { position: relative; flex: 1 1 auto; background: #05040a; }
+#game-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+.cab-fx { opacity: .22; }
+
+#cab-over {
+  position: absolute; inset: 0;
+  display: grid; place-content: center; justify-items: center; gap: 12px;
+  background: rgba(4,3,8,.9);
+}
+#cab-over[hidden] { display: none; }
+
+/* ------------------------------------------------------------------ tweaks */
+
+@media (pointer: fine) {
+  #touch { display: none; }
+}
+@media (max-width: 560px) {
+  #placard { bottom: calc(140px + env(safe-area-inset-bottom)); width: calc(100vw - 24px); }
+  #say { bottom: calc(214px + env(safe-area-inset-bottom)); white-space: normal; max-width: calc(100vw - 32px); text-align: center; }
+  #pl-desc { display: none; }
+  .cab-btns .plate { font-size: 11px; padding: 8px 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fx-haze, #enter-btn, .mom-main, .mom-sub, #cabinet.is-open { animation: none; }
+}

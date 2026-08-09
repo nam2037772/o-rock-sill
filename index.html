@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0a0810">
+<title>O-ROCK-SILL · 오락실</title>
+<meta name="description" content="1980년대 동네 오락실을 걸어 다니며 오락기를 골라 앉는 가상 오락실.">
+<meta property="og:title" content="O-ROCK-SILL">
+<meta property="og:description" content="INSERT COIN · PICK A GAME — 걸어 다니는 1980년대 가상 오락실.">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%23140f18'/><rect x='3' y='2' width='10' height='9' fill='%23e8c15a'/><rect x='4' y='4' width='8' height='5' fill='%23241a2c'/><rect x='5' y='12' width='6' height='2' fill='%239a7b3f'/></svg>">
+</head>
+<body>
+
+<div id="app">
+  <div id="stage">
+    <canvas id="scene" aria-label="오락실"></canvas>
+    <div class="fx fx-scan"></div>
+    <div class="fx fx-haze"></div>
+    <div class="fx fx-vig"></div>
+  </div>
+
+  <!-- ------------------------------------------------ front of the arcade -->
+  <div id="front">
+    <div class="front-inner">
+      <p class="front-line">주머니엔 <b>₩1,000</b> 한 장.</p>
+      <button id="enter-btn" class="plate plate-go">오락실 들어가기</button>
+      <p class="front-keys">
+        <span>이동 <b>WASD</b> / <b>방향키</b></span>
+        <span>확인 <b>ENTER</b></span>
+      </p>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------------- the HUD -->
+  <div id="hud" hidden>
+    <div id="wallet">
+      <div id="coins" aria-label="남은 동전"></div>
+      <div id="won">₩1,000</div>
+    </div>
+    <button id="sound-btn" class="plate" aria-pressed="true" title="소리">
+      <span class="sp-on">♪ ON</span>
+    </button>
+  </div>
+
+  <!-- ------------------------------------------- the plate on the machine -->
+  <div id="placard" hidden>
+    <div class="pl-head">
+      <span id="pl-title">—</span>
+      <span id="pl-year"></span>
+    </div>
+    <div id="pl-genre"></div>
+    <p id="pl-desc"></p>
+    <button id="pl-go" class="plate plate-go">₩100 넣기</button>
+  </div>
+
+  <div id="say" hidden></div>
+
+  <!-- ------------------------------------------------------ touch controls -->
+  <div id="touch" hidden>
+    <div id="stick" aria-label="이동"><div id="knob"></div></div>
+    <button id="abtn" aria-label="확인">확인</button>
+  </div>
+
+  <!-- ---------------------------------------------------- the boss arrives -->
+  <div id="mom" hidden>
+    <p class="mom-main">엄마가 오락실에 찾아오셨습니다.</p>
+    <p class="mom-sub">도망칠 수 없습니다.</p>
+  </div>
+
+  <div id="over" hidden>
+    <p class="over-main">GAME OVER</p>
+    <p class="over-sub">오늘은 여기까지.</p>
+    <p class="over-stat" id="over-stat"></p>
+    <button id="again-btn" class="plate plate-go">다음에 또 놀기</button>
+  </div>
+
+  <!-- ------------------------------------------ a game, inside the cabinet -->
+  <div id="cabinet" aria-hidden="true">
+    <div class="cab-bar">
+      <span id="cab-title">—</span>
+      <span class="cab-credit">CREDIT 1</span>
+      <span class="cab-btns">
+        <button id="cab-retry" class="plate">다시하기</button>
+        <button id="cab-exit" class="plate plate-exit">오락실로</button>
+      </span>
+    </div>
+    <div class="cab-screen">
+      <iframe id="game-frame" title="게임" src="about:blank"
+              allow="autoplay; fullscreen; gamepad; accelerometer; gyroscope"
+              referrerpolicy="no-referrer"></iframe>
+      <div class="fx fx-scan cab-fx"></div>
+      <div id="cab-over" hidden>
+        <p class="over-main">GAME OVER</p>
+        <button id="over-retry" class="plate plate-go">다시하기</button>
+        <button id="over-exit" class="plate">오락실로</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
