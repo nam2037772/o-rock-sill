@@ -1,6 +1,6 @@
 # O-ROCK-SILL — Handoff
 
-A walkable 1980s Korean neighbourhood arcade that acts as the hub for our retro browser games. It is deliberately **not** a game list. You arrive on the street, push the door open, change a ₩1,000 note at the 동전교환기, walk the aisles, sit down at a machine, drop a ₩100 coin, and the game runs inside that cabinet.
+A walkable 1980s Korean neighbourhood arcade that acts as the hub for our retro browser games. It is deliberately **not** a game list. You arrive on the street, push the door open, walk the aisles, and click or tap a machine. The game launches immediately in a new tab, automatically deducting ₩100 (and automatically exchanging your ₩1,000 note if it's your first game).
 
 **Production:** https://o-rock-sill.vercel.app
 **Repository:** https://github.com/nam2037772/o-rock-sill
@@ -45,14 +45,13 @@ Plain HTML/CSS/ES modules. **No framework, no build step, no dependencies, and n
 | `js/games.js` | **The registry.** Games, cabinet themes, machine shapes. The data layer. |
 | `js/world.js` | The building: walls, scenery, background machines, wall art, ceiling tubes, the regulars. |
 | `js/art.js` | All pixel drawing — the 3×5 bitmap font, cabinets, props, people, lighting, the storefront. |
-| `js/engine.js` | Room simulation: input, collision, camera, focus, and the sit → coin → zoom → play → stand state machine. |
-| `js/launcher.js` | The shared game-launch/return system (see §4). |
+| `js/engine.js` | Room simulation: input, collision, camera, focus, and the directPlay state machine. |
 | `js/session.js` | One visit: the note, the coins, your position. Persisted in `sessionStorage`. |
 | `js/ui.js` | DOM chrome: wallet, info plate, subtitles, touch stick, story beats. |
 | `js/audio.js` | Original synthesised soundtrack, room ambience and SFX. |
 | `js/main.js` | Boot and wiring. Nothing game-specific lives here. |
 
-**The engine knows nothing about any individual game.** A machine is whatever the registry says it is, and launching one is handed to the launcher.
+**The engine knows nothing about any individual game.** A machine is whatever the registry says it is, and interacting with it directly opens its URL in a new tab.
 
 ### Rendering
 A 3/4 top-down room drawn on a canvas at a low virtual resolution and scaled up with `image-rendering: pixelated`. The camera sizes itself by *area* (`TARGET_PIXELS`) rather than fixed dimensions, so a phone in portrait sees the same amount of arcade as a desktop instead of a letterboxed crop.
@@ -66,22 +65,16 @@ Static floor, walls and posters are pre-rendered once into an offscreen canvas; 
 | Input | Desktop | Mobile |
 |---|---|---|
 | **Walk** | `W` `A` `S` `D` / Arrow Keys | Drag the virtual stick, or tap a clear spot on the floor to auto-walk there. |
-| **Interact** | `Enter` / `Space` | Tap the glowing machine you are standing at, or press the big 확인 button. |
+| **Play** | Tap a game machine | Tap a playable cabinet. It immediately exchanges coins (if needed), spends ₩100, and opens the game in a new tab. |
 
 The arcade is fully responsive. The virtual stick only appears for touch-capable devices, and the UI layout changes on narrow screens so the text fits.
 
 ---
 
-## 4. The Game Launcher / iframe Embedding
+## 4. Game Integration
 
-A game never replaces the page. It is mounted inside the cabinet the player is sitting at, in an `<iframe>` behind a CRT bezel (`#cabinet`). The arcade engine suspends itself underneath, which is why standing up puts you back on the same stool with the same coins in your pocket.
-
-Because of this:
-1. Every machine gets the same two controls (`다시하기` and `오락실로`), so no individual game has to implement them.
-2. The game must **not** send `X-Frame-Options: DENY` or `Content-Security-Policy: frame-ancestors 'none'`, or the browser will refuse to load it. All current Vercel and GitHub Pages games are fine.
-3. Games may optionally talk to the cabinet with `postMessage`, but it is not required:
-   - `parent.postMessage({ type: 'orocksill:exit' }, '*')` — Stand up and return to the arcade.
-   - `parent.postMessage({ type: 'orocksill:gameover' }, '*')` — Show the arcade's native Game Over overlay instead of building your own.
+Games open in a new tab (`target="_blank"`). There are no iframes or postMessage wrappers.
+When the player is done, they simply close the game tab. Returning to the arcade tab shows their character standing in front of the machine they just played, with their wallet accurately reflecting the spent coin.
 
 ---
 
