@@ -88,7 +88,9 @@ export const UI = {
       this.el.plYear.textContent = '';
       this.el.plGenre.textContent = 'CHANGE MACHINE';
       this.el.plDesc.textContent = '지폐를 넣으면 ₩100짜리 동전으로 바꿔준다.';
-      this.el.plGo.textContent = Session.exchanged ? '이미 바꿨다' : '₩1,000 넣기';
+      this.el.plGo.textContent = Session.exchanged
+        ? '이미 바꿨다'
+        : (this.touch ? '₩1,000 넣기' : 'ENTER · ₩1,000 넣기');
       this.el.plGo.disabled = false;
       return;
     }
@@ -105,11 +107,36 @@ export const UI = {
       : g.description;
     this.el.plGo.textContent = dead
       ? '살펴보기'
-      : (Session.coins > 0 ? '₩100 넣기' : (Session.exchanged ? '동전이 없다' : '동전부터 바꾸기'));
+      : Session.coins > 0
+        ? (this.touch ? '게임하기 · ₩100' : 'ENTER · 앉아서 게임하기')
+        : (Session.exchanged ? '동전이 없다' : '동전부터 바꾸기');
     this.el.plGo.disabled = false;
   },
 
   hidePlacard() { this.el.placard.hidden = true; },
+
+  /* ------------------------------------------------------------ orientation */
+
+  /** True when the player is driving with a thumb rather than a keyboard. */
+  get touch() { return matchMedia('(pointer: coarse)').matches; },
+
+  /**
+   * The one-off welcome. Says where you are, what moves you, and what the
+   * button does — then gets out of the way after eight seconds.
+   */
+  arrived() {
+    this.paintWallet();
+    this.say(
+      this.touch
+        ? '조이스틱으로 이동 · 게임기 앞에서 [확인]'
+        : '방향키/WASD로 이동 · 게임기 앞에서 ENTER',
+      8
+    );
+    clearTimeout(this.goalTimer);
+    this.goalTimer = setTimeout(() => {
+      if (!Session.played) this.say('₩1,000짜리 한 장. 먼저 동전으로 바꾸자.', 4);
+    }, 8200);
+  },
 
   /* ------------------------------------------------------------- subtitle */
 
@@ -134,7 +161,7 @@ export const UI = {
       const n = Math.min(1, d / R);
       arcade.input.ax = d ? (dx / d) * n : 0;
       arcade.input.ay = d ? (dy / d) * n : 0;
-      if (d > 6) arcade.autoTarget = null;
+      if (d > 6) arcade.cancelAuto();
     };
     const release = () => {
       id = null;

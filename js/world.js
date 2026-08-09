@@ -46,6 +46,8 @@ export const PROPS = [
   { type: 'deco-cab',  x: 806, y: 116, ...CAB, tint: '#5c4a2a', pattern: 'dead',   label: 'TIGER LANE', broken: true, defect: '고장' },
   { type: 'photo',     x: 878, y: 124, w: 58, d: 40, h: 70 },
 
+  { type: 'deco-cab',  x: 246, y: 116, ...CAB, tint: '#2f5c46', pattern: 'blocks', label: 'CANDY LIFT' },
+
   // --- middle row, back to back with the aisle behind it --------------------
   { type: 'deco-cab',  x: 190, y: 250, ...CAB, tint: '#6b2f3a', pattern: 'stars',  label: 'DIZZY POP' },
   { type: 'deco-cab',  x: 246, y: 250, ...CAB, tint: '#2f4a6b', pattern: 'bars',   label: 'METRO RUN' },
@@ -65,7 +67,10 @@ export const PROPS = [
   { type: 'vending',   x: 52,  y: 300, w: 40, d: 24, h: 54 },
   { type: 'jukebox',   x: 52,  y: 438, w: 38, d: 24, h: 48 },
   // the coin changer, deliberately right where you come in
-  { type: 'change',    x: 604, y: 668, w: 32, d: 24, h: 48, interact: 'change' },
+  // Sits well clear of the south wall on purpose: its standing spot is y+26,
+  // and the player's feet need ~8px, so anything below y≈650 leaves them
+  // pinned between the machine and the wall on the way in.
+  { type: 'change',    x: 604, y: 640, w: 32, d: 24, h: 48, interact: 'change' },
 
   // --- fourth row, west side ------------------------------------------------
   { type: 'deco-cab',  x: 96,  y: 488, ...CAB, tint: '#5c3a4a', pattern: 'stars',  label: 'GOLD MINER' },
@@ -138,7 +143,7 @@ export const WALL_ART = [
 /** Signs on the side / south walls. */
 export const ROOM_SIGNS = [
   { type: 'exit',    x: 480, y: 716 },                              // over the doors
-  { type: 'hanging', x: 604, y: 612, text: '동전교환', tone: '#ffd166', kr: true },
+  { type: 'hanging', x: 604, y: 586, text: '동전교환', tone: '#ffd166', kr: true },
   { type: 'hanging', x: 780, y: 596, text: 'PRIZES',   tone: '#e8a04a' },
   { type: 'hanging', x: 168, y: 500, text: 'COCKTAIL', tone: '#7ab8a8' }
 ];

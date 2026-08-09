@@ -64,7 +64,10 @@ export const GAMES = [
     url: 'https://last-bus-panic-1984.vercel.app',
     cabinetTheme: 'amber',
     machine: 'cabinet',
-    x: 246, y: 116
+    // Deliberately the first machine you meet: it is straight ahead as you come
+    // through the door, and close enough to the 동전교환기 that both are on a
+    // phone screen at once. Walk in and you are standing at it in two seconds.
+    x: 480, y: 620
   },
   {
     id: 'steel-climber',

@@ -20,6 +20,7 @@ export const Session = {
   x: 0, y: 0,
   machine: null,
   inside: false,
+  played: false,     // true once a game has been launched; retires the on-screen guidance
 
   load() {
     try {
@@ -35,7 +36,7 @@ export const Session = {
     try {
       sessionStorage.setItem(KEY, JSON.stringify({
         bill: this.bill, exchanged: this.exchanged, coins: this.coins, spent: this.spent,
-        x: this.x, y: this.y, machine: this.machine, inside: this.inside
+        x: this.x, y: this.y, machine: this.machine, inside: this.inside, played: this.played
       }));
     } catch { /* private browsing, no matter */ }
   },
@@ -56,6 +57,7 @@ export const Session = {
     if (this.coins <= 0) return false;
     this.coins--;
     this.spent++;
+    this.played = true;
     this.save();
     return true;
   },
@@ -67,6 +69,7 @@ export const Session = {
     this.spent = 0;
     this.machine = null;
     this.inside = false;
+    this.played = false;
     this.x = 0; this.y = 0;
     this.save();
   }

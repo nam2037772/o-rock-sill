@@ -192,6 +192,9 @@ html, body {
 /* ---------------------------------------------------------------- subtitle */
 
 #say {
+  /* Never intercept a tap: on a phone this bar sits right over the middle of
+     the room, and a swallowed tap reads as the arcade being unresponsive. */
+  pointer-events: none;
   position: absolute; left: 50%; transform: translateX(-50%);
   bottom: calc(96px + env(safe-area-inset-bottom));
   background: rgba(8,7,12,.86);

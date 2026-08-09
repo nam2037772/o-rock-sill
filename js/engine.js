@@ -12,7 +12,7 @@ import { GAMES, themeOf, shapeOf } from './games.js';
 import { ROOM, WALLS, PROPS, NPCS, CEILING_LIGHTS, CEILING_TUBES, ROOM_SIGNS } from './world.js';
 import {
   FX, buildStaticLayer, drawMachine, drawProp, drawPerson, drawLights, drawReflections,
-  drawWallSigns, drawRoomSigns, drawCeiling, drawStorefront, drawFrontPlayer,
+  drawWallSigns, drawRoomSigns, drawCeiling, drawGuide, drawStorefront, drawFrontPlayer,
   patternFor, defectOf, r
 } from './art.js';
 import { Sound } from './audio.js';
@@ -39,6 +39,7 @@ export const Arcade = {
   focus: null,                // { kind:'machine'|'change', ref }
   active: null,               // machine currently being used
   autoTarget: null,
+  pending: null,              // a tapped cabinet we are on our way to
   timer: 0,
   fade: 0,
   redFlash: 0,
@@ -165,7 +166,7 @@ export const Arcade = {
       this.player.x = ROOM.spawn.x; this.player.y = ROOM.spawn.y;
       this.cam.x = this.player.x; this.cam.y = this.player.y - 40;
       Session.patch({ inside: true });
-      this.say('₩1,000짜리 한 장. 동전으로 바꿔야 한다.', 3.4);
+      if (this.hooks.onArrive) this.hooks.onArrive();
     }
   },
 
@@ -175,11 +176,18 @@ export const Arcade = {
 
     // tap-to-walk: steer toward the tapped spot until we arrive or get stuck
     if (this.autoTarget) {
-      const dx = this.autoTarget.x - p.x, dy = this.autoTarget.y - p.y;
+      const a = this.autoTarget;
+      const dx = a.x - p.x, dy = a.y - p.y;
       const d = Math.hypot(dx, dy);
-      if (d < 5 || this.autoTarget.life <= 0) this.autoTarget = null;
-      else {
-        this.autoTarget.life -= dt;
+      const moved = a.last ? Math.hypot(p.x - a.last.x, p.y - a.last.y) : 1;
+      a.stuck = (a.last && moved < 0.3) ? (a.stuck || 0) + dt : 0;
+      a.last = { x: p.x, y: p.y };
+      if (d < 6 || a.life <= 0 || a.stuck > 1.1) {
+        const gaveUp = d >= 6;
+        this.autoTarget = null;
+        this.resolvePending(gaveUp);
+      } else {
+        a.life -= dt;
         ax = dx / d; ay = dy / d;
       }
     }
@@ -201,13 +209,15 @@ export const Arcade = {
     let best = null, bestD = Infinity;
     for (const m of this.machines) {
       const dx = Math.abs(p.x - m.seat.x), dy = Math.abs(p.y - m.seat.y);
-      if (dx > m.shape.w / 2 + 24 || dy > 30) continue;
+      // deliberately roomy — pressing ENTER anywhere near a machine snaps you
+      // onto its stool, so precise positioning is never required
+      if (dx > m.shape.w / 2 + 30 || dy > 44) continue;
       const d = dx + dy;
       if (d < bestD) { bestD = d; best = { kind: 'machine', ref: m }; }
     }
     if (!best && this.changeSpot) {
       const c = this.changeSpot;
-      if (Math.abs(p.x - c.x) < 40 && Math.abs(p.y - (c.y + 26)) < 28) best = { kind: 'change', ref: c };
+      if (Math.abs(p.x - c.x) < 46 && Math.abs(p.y - (c.y + 26)) < 40) best = { kind: 'change', ref: c };
     }
     const changed = (best && best.ref) !== (this.focus && this.focus.ref);
     this.focus = best;
@@ -482,6 +492,9 @@ export const Arcade = {
     for (const it of items) it.draw();
 
     drawLights(ctx, CEILING_LIGHTS, this.machines, this.t);
+    if (this.mode === 'walk' && !Session.played) {
+      drawGuide(ctx, p.x, p.y, this.guideTarget(), this.t);
+    }
     drawCeiling(ctx, CEILING_TUBES, this.t);
     if (this.mode === 'mom' && this.momPhase >= 1) this.drawDoorSpotlight(ctx);
 
@@ -547,8 +560,9 @@ export const Arcade = {
       if (Session.exchanged) { this.say('이미 다 바꿨다.', 1.8); Sound.deny(); return; }
       Session.exchange();
       Sound.exchange();
-      this.say('₩1,000 → ₩100 열 개.', 2.6);
+      this.say('₩1,000 → ₩100 열 개. 이제 게임기 앞에 앉자.', 3.2);
       if (this.hooks.onCoins) this.hooks.onCoins();
+      if (this.hooks.onFocus) this.hooks.onFocus(this.focus);   // relabel the plate
       return;
     }
 
@@ -586,6 +600,7 @@ export const Arcade = {
   /** Walk to a point the player tapped, and pick up any machine there. */
   walkTo(wx, wy) {
     if (this.mode !== 'walk') return;
+    this.pending = null;
     this.autoTarget = { x: wx, y: wy, life: 6 };
   },
 
@@ -600,20 +615,100 @@ export const Arcade = {
     };
   },
 
-  /** Which machine, if any, was tapped on screen. */
+  /** Whatever interactive thing was tapped on screen — its body or its stool. */
   pick(wx, wy) {
     for (const m of this.machines) {
       const s = m.shape;
-      if (wx > m.x - s.w / 2 - 4 && wx < m.x + s.w / 2 + 4 &&
-          wy > m.y - s.d / 2 - s.h && wy < m.y + s.seat.y + 12) return m;
+      if (wx > m.x - s.w / 2 - 6 && wx < m.x + s.w / 2 + 6 &&
+          wy > m.y - s.d / 2 - s.h && wy < m.y + s.seat.y + 16) return { kind: 'machine', ref: m };
     }
+    const c = this.changeSpot;
+    if (c && wx > c.x - c.w / 2 - 8 && wx < c.x + c.w / 2 + 8 &&
+        wy > c.y - c.d / 2 - c.h && wy < c.y + c.d / 2 + 30) return { kind: 'change', ref: c };
     return null;
+  },
+
+  /**
+   * Tapping a machine is a complete instruction, not a request to walk there.
+   * We head over, change the note on the way if that has not happened yet, and
+   * sit down on arrival — and if the route is blocked we simply step onto the
+   * stool rather than leaving the player stranded. Walking is always optional.
+   */
+  tapTarget(hit) {
+    if (this.mode !== 'walk' || !hit) return;
+    if (hit.kind === 'change') {
+      this.pending = { stage: 'change', machine: null };
+      this.autoTarget = { x: this.changeSpot.x, y: this.changeSpot.y + 26, life: 5 };
+      return;
+    }
+    const m = hit.ref;
+    if (m.game.status === 'playable' && !Session.exchanged) {
+      // no coins yet: swing past the changer first, then carry on to the machine
+      this.pending = { stage: 'change', machine: m };
+      this.autoTarget = { x: this.changeSpot.x, y: this.changeSpot.y + 26, life: 5 };
+      this.say('먼저 동전으로 바꾸고.', 2.0);
+      return;
+    }
+    this.pending = { stage: 'sit', machine: m };
+    this.autoTarget = { x: m.seat.x, y: m.seat.y, life: 5 };
+  },
+
+  resolvePending(gaveUp) {
+    const q = this.pending;
+    if (!q) return;
+
+    if (q.stage === 'change') {
+      if (gaveUp) { this.player.x = this.changeSpot.x; this.player.y = this.changeSpot.y + 26; }
+      this.updateFocus();
+      if (!Session.exchanged) {
+        Session.exchange();
+        Sound.exchange();
+        this.say('₩1,000 → ₩100 열 개.', 2.4);
+        if (this.hooks.onCoins) this.hooks.onCoins();
+        if (this.hooks.onFocus) this.hooks.onFocus(this.focus);
+      }
+      if (!q.machine) { this.pending = null; return; }
+      q.stage = 'sit';
+      this.autoTarget = { x: q.machine.seat.x, y: q.machine.seat.y, life: 5 };
+      return;
+    }
+
+    const m = q.machine;
+    this.pending = null;
+    if (gaveUp) { this.player.x = m.seat.x; this.player.y = m.seat.y; }
+    this.updateFocus();
+    if (m.game.status !== 'playable') { Sound.deny(); this.say('고장난 것 같다.', 2.0); return; }
+    if (Session.coins <= 0) { Sound.deny(); this.say('동전이 없다.', 2.2); return; }
+    this.sitAt(m);
+  },
+
+  /** Manual input always wins: cancel whatever we were walking toward. */
+  cancelAuto() { this.autoTarget = null; this.pending = null; },
+
+  /**
+   * Where a lost first-time visitor should be heading: the coin changer while
+   * they still have the note, otherwise the nearest machine that actually works.
+   */
+  guideTarget() {
+    if (Session.played) return null;
+    if (!Session.exchanged) {
+      const c = this.changeSpot;
+      return c ? { x: c.x, y: c.y + 26 } : null;
+    }
+    let best = null, bestD = Infinity;
+    for (const m of this.machines) {
+      if (m.game.status !== 'playable') continue;
+      const d = Math.hypot(m.seat.x - this.player.x, m.seat.y - this.player.y);
+      if (d < bestD) { bestD = d; best = m; }
+    }
+    return best ? { x: best.seat.x, y: best.seat.y } : null;
   },
 
   say(text, seconds) { if (this.hooks.onSay) this.hooks.onSay(text, seconds); },
 
   restart() {
     Session.reset();
+    this.pending = null;
     this.mode = 'front';
     this.momPhase = 0;
     this.fade = 0;

@@ -484,6 +484,11 @@ function uprightCab(ctx, m, t, focus) {
   } else {
     r(ctx, x0 + 2, mq + 1, w - 4, 12, shade(th.neon, -34));
     pxMarquee(ctx, m.game.title, x, mq + 1, w - 8, 12, '#f4f1e8');
+    // attract bulbs chasing along the bottom of the marquee
+    for (let i = 0; i < 6; i++) {
+      const on = (Math.floor(t * 6) + i) % 6 < 2;
+      r(ctx, x0 + 5 + i * ((w - 10) / 6), mq + 12, 2, 1, on ? '#fff2cc' : shade(th.neon, -70));
+    }
   }
   r(ctx, x0 + 2, mq + 12, w - 4, 1, '#00000055');
 
@@ -519,7 +524,7 @@ function uprightCab(ctx, m, t, focus) {
   const skew = dead ? ((m.phase * 13) % 1 - 0.5) * 16 : 0;
   if (!m.occupied) stool(ctx, x + skew, front + 15, dead ? (skew > 0 ? 1 : -1) : 0);
 
-  if (focus) focusRing(ctx, x, front, w, t);
+  if (focus) focusRing(ctx, x, front, w, t, { x: x0, y: top, w, h: s.h + s.d });
 }
 
 /**
@@ -658,7 +663,16 @@ function wear(ctx, x, y, w, h, phase) {
 }
 
 /** The "you can use this" pool of light on the floor. Diegetic, not a UI ring. */
-function focusRing(ctx, x, y, w, t) {
+function focusRing(ctx, x, y, w, t, box) {
+  if (box) {
+    // catch-light along the cabinet edges, as if you are standing in its glow
+    ctx.save();
+    ctx.globalAlpha = 0.30 + Math.sin(t * 4) * 0.12;
+    r(ctx, box.x - 1, box.y, 1, box.h, '#ffe9b8');
+    r(ctx, box.x + box.w, box.y, 1, box.h, '#ffe9b8');
+    r(ctx, box.x - 1, box.y - 1, box.w + 2, 1, '#ffe9b8');
+    ctx.restore();
+  }
   const pulse = 0.45 + Math.sin(t * 4) * 0.12;
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
@@ -995,8 +1009,10 @@ export function drawLights(ctx, lights, machines, t) {
   for (const m of machines) {
     const live = m.game.status === 'playable';
     const flick = 0.82 + Math.sin(t * 12 + m.phase * 9) * 0.06 + Math.sin(t * 3.1 + m.phase) * 0.12;
-    // a dead machine throws almost nothing — that is how you spot it from across the room
-    ctx.globalAlpha = (live ? 0.32 : 0.05) * flick;
+    // a dead machine throws almost nothing — that is how you spot it from across
+    // the room, and the slow breathe on a live one reads as attract mode
+    const breathe = live ? 1 + Math.sin(t * 1.6 + m.phase * 6) * 0.18 : 1;
+    ctx.globalAlpha = (live ? 0.42 : 0.05) * flick * breathe;
     const y = m.y + m.shape.d / 2 + 6;
     const g = ctx.createRadialGradient(m.x, y, 2, m.x, y, 52);
     g.addColorStop(0, m.theme.neon);
@@ -1236,6 +1252,52 @@ export function drawFrontPlayer(ctx, x, y, t, walking) {
     r(ctx, x + 6, y - 15 + wave, 7, 4, '#c8b878');       // the note
     r(ctx, x + 7, y - 14 + wave, 5, 2, '#a89a5e');
   }
+}
+
+/* ---------------------------------------------------------------- guidance */
+
+/**
+ * First-visit orientation, drawn in the world so it stays part of the room
+ * rather than becoming a UI layer floating over it. Two pieces:
+ *
+ *   나        a small tag over the player, so you know which sprite is you
+ *   chevron   a bobbing pointer at arm's length, aimed at whatever you need
+ *             next — the coin changer while you still have the note, the
+ *             nearest live cabinet once you have coins
+ *
+ * Both retire for good the moment the player puts their first coin in.
+ */
+export function drawGuide(ctx, px, py, target, t) {
+  // the "나" tag
+  const bob = Math.round(Math.sin(t * 3) * 1);
+  const top = py - 34 + bob;
+  ctx.save();
+  ctx.globalAlpha = 0.92;
+  r(ctx, px - 9, top, 18, 12, '#141019');
+  r(ctx, px - 9, top, 18, 1, '#4a4250');
+  krText(ctx, '나', px, top + 1, 10, '#f0d78a');
+  r(ctx, px - 2, top + 12, 4, 2, '#141019');
+  r(ctx, px - 1, top + 14, 2, 1, '#141019');
+  ctx.restore();
+
+  if (!target) return;
+
+  // the pointer, out at arm's length in the direction you should walk
+  const dx = target.x - px, dy = target.y - py;
+  const d = Math.hypot(dx, dy);
+  if (d < 46) return;                       // close enough, stop nagging
+  const ux = dx / d, uy = dy / d;
+  const reach = 30 + Math.sin(t * 4) * 3;
+  const ax = px + ux * reach, ay = py - 12 + uy * reach;
+
+  ctx.save();
+  ctx.translate(Math.round(ax), Math.round(ay));
+  ctx.rotate(Math.atan2(uy, ux));
+  ctx.globalAlpha = 0.5 + Math.sin(t * 4) * 0.2;
+  // a chunky chevron, built from pixel columns so it stays in style
+  ctx.fillStyle = '#f0c95e';
+  for (let i = 0; i < 5; i++) ctx.fillRect(i - 2, -(4 - i), 1, (4 - i) * 2);
+  ctx.restore();
 }
 
 /* ------------------------------------------------------------------ people */

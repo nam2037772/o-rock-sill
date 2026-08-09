@@ -23,6 +23,7 @@ Launcher.init(() => Arcade.returnFromGame());
 Arcade.hooks = {
   onFocus: (f) => UI.setFocus(f),
   onSay: (text, secs) => UI.say(text, secs),
+  onArrive: () => UI.arrived(),
   onCoins: () => UI.paintWallet(),
   onSit: () => UI.hidePlacard(),
   onCredit: () => { UI.paintWallet(); UI.say('CREDIT 1', 1.4); },
@@ -49,7 +50,7 @@ function applyAxis() {
   }
   Arcade.input.ax = Math.max(-1, Math.min(1, ax));
   Arcade.input.ay = Math.max(-1, Math.min(1, ay));
-  if (ax || ay) Arcade.autoTarget = null;
+  if (ax || ay) Arcade.cancelAuto();
 }
 
 addEventListener('keydown', (e) => {
@@ -94,8 +95,9 @@ canvas.addEventListener('pointerup', (e) => {
   if (Arcade.mode !== 'walk') return;
 
   const w = Arcade.toWorld(e.clientX, e.clientY);
-  const m = Arcade.pick(w.x, w.y);
-  if (m) Arcade.walkTo(m.seat.x, m.seat.y);          // auto-snap to the stool
+  const hit = Arcade.pick(w.x, w.y);
+  // tapping a machine is the whole instruction: walk, change money, sit, play
+  if (hit) Arcade.tapTarget(hit);
   else Arcade.walkTo(w.x, w.y);
 });
 
